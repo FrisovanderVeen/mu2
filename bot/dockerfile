@@ -1,0 +1,11 @@
+FROM golang
+
+RUN go get -u github.com/golang/dep/cmd/dep
+
+ADD . /go/src/github.com/FrisovanderVeen/mu2/bot/
+
+WORKDIR $GOPATH/src/github.com/FrisovanderVeen/mu2/bot
+
+RUN dep ensure
+
+CMD ["go run", "main.go"]
