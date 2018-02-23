@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
 // Bot is a wrapper for a discordgo session
 type Bot struct {
+	mu sync.RWMutex
+
 	Session *discordgo.Session
+	Time    time.Time
 
 	ErrWriter io.Writer
 	ErrPrefix func() string
@@ -59,7 +64,13 @@ func (b *Bot) Error(err error) {
 
 // Open opens the discord session
 func (b *Bot) Open() error {
-	return b.Session.Open()
+	if err := b.Session.Open(); err != nil {
+		return err
+	}
+
+	b.Time = time.Now()
+
+	return nil
 }
 
 // Close closes the discord session
@@ -102,4 +113,9 @@ func (b *Bot) AddCommand(coms ...*Command) error {
 // UpdateStatus sets the bot's status if game == "" then set status to active and not playing anything
 func (b *Bot) UpdateStatus(game string) error {
 	return b.Session.UpdateStatus(0, game)
+}
+
+// UpTime is the time the bot has been active for
+func (b Bot) UpTime() time.Duration {
+	return time.Since(b.Time)
 }

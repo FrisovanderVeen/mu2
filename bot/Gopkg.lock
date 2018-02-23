@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/FrisovanderVeen/bf"
   packages = ["."]
-  revision = "88d2a36f874d92d8fc28ce95caa48e59530b4344"
+  revision = "052df4d66e3f2d4519e56f332d4fbef419968d84"
 
 [[projects]]
   name = "github.com/Sirupsen/logrus"

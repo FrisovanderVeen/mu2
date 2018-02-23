@@ -26,13 +26,18 @@ var Info = &bf.Command{
 				Inline: true,
 			},
 			&discordgo.MessageEmbedField{
+				Name:   "Uptime",
+				Value:  ctx.Bot.UpTime().String(),
+				Inline: true,
+			},
+			&discordgo.MessageEmbedField{
 				Name:   "Invite",
 				Value:  "https://discordapp.com/oauth2/authorize?client_id=416569570703310850&scope=bot",
 				Inline: true,
 			},
 			&discordgo.MessageEmbedField{
 				Name:   "GitHub",
-				Value:  "https://discordapp.com/oauth2/authorize?client_id=416569570703310850&scope=bot",
+				Value:  "https://github.com/FrisovanderVeen/mu2",
 				Inline: true,
 			},
 		}
