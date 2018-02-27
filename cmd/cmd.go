@@ -5,25 +5,30 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	bf "github.com/FrisovanderVeen/bf"
-	"github.com/FrisovanderVeen/mu2/commands"
-	"github.com/Sirupsen/logrus"
 	"github.com/bwmarrin/discordgo"
+	"github.com/op/go-logging"
 	"github.com/urfave/cli"
+
+	"github.com/FrisovanderVeen/mu2/commands"
+	_ "github.com/FrisovanderVeen/mu2/commands/help"
+	_ "github.com/FrisovanderVeen/mu2/commands/info"
+	_ "github.com/FrisovanderVeen/mu2/commands/pingpong"
 )
+
+var log = logging.MustGetLogger("cmd")
 
 var globalFlags = []cli.Flag{
 	cli.StringFlag{
 		Name:  "token, t",
 		Value: "DGTOKEN",
-		Usage: "The enviroment variable of the discord token",
+		Usage: "The environment variable of the discord token",
 	},
 	cli.StringFlag{
 		Name:  "prefix, p",
 		Value: "DGPREFIX",
-		Usage: "The enviroment variable of the discord prefix",
+		Usage: "The environment variable of the discord prefix",
 	},
 }
 
@@ -36,10 +41,11 @@ func NewApp() *cli.App {
 	app.Action = func(c *cli.Context) error {
 		tokenEnv := c.String("token")
 		prefixEnv := c.String("prefix")
-		logger := logrus.New()
+		logging.SetBackend(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{module} ▶ %{level:.4s} %{id:03x} %{message} %{color:reset}`)))
 
-		bot, err := bf.NewBot(bf.ErrWriter(logger.WriterLevel(logrus.ErrorLevel)), getEnvVars(tokenEnv, prefixEnv), bf.ErrPrefix(func() string { return time.Now().Format("15:04:05") }))
+		bot, err := bf.NewBot(getEnvVars(tokenEnv, prefixEnv))
 		if err != nil {
+			log.Critical("Could not make bot: %v", err)
 			return err
 		}
 
@@ -48,23 +54,26 @@ func NewApp() *cli.App {
 		})
 
 		if err := bot.AddCommand(commands.Commands...); err != nil {
+			log.Errorf("Could not add command: %v", err)
 			return err
 		}
 
 		if err := bot.Open(); err != nil {
+			log.Critical("Could not open session: %v", err)
 			return err
 		}
 
-		logger.Info("Logged in as")
-		logger.Info(bot.Session.State.User.Username)
-		logger.Info(bot.Session.State.User.ID)
-		logger.Info("Bot is now running.  Press CTRL-C to exit.")
-		logger.Info("-------------------")
+		log.Info("Logged in as")
+		log.Info(bot.Session.State.User.Username)
+		log.Info(bot.Session.State.User.ID)
+		log.Info("Bot is now running. Press CTRL-C to exit.")
+		log.Info("-------------------")
 		sc := make(chan os.Signal, 1)
 		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 		<-sc
 
 		if err := bot.Close(); err != nil {
+			log.Errorf("Could not close session: %v", err)
 			return err
 		}
 

@@ -7,30 +7,30 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/FrisovanderVeen/bf"
+	bf "github.com/FrisovanderVeen/bf"
 )
 
-var ping = &bf.Command{
-	Name:    "ping",
-	Trigger: "ping",
-	Use:     "sends pong to the text channel",
-	Action: func(ctx bf.Context) {
-		if err := ctx.SendMessage("ping"); err != nil {
+var ping = bf.NewCommand(
+	bf.Name("ping"),
+	bf.Trigger("ping"),
+	bf.Use("Sends pong to the text channel"),
+	bf.Action(func(ctx bf.Context) {
+		if err := ctx.SendMessage("pong"); err != nil {
 			ctx.Error(err)
 		}
-	},
-}
+	}),
+)
 
-var pong = &bf.Command{
-	Name:    "pong",
-	Trigger: "pong",
-	Use:     "sends ping to the text channel",
-	Action: func(ctx bf.Context) {
+var pong = bf.NewCommand(
+	bf.Name("pong"),
+	bf.Trigger("pong"),
+	bf.Use("Sends ping to the text channel"),
+	bf.Action(func(ctx bf.Context) {
 		if err := ctx.SendMessage("ping"); err != nil {
 			ctx.Error(err)
 		}
-	},
-}
+	}),
+)
 
 func main() {
 	bot, err := bf.NewBot(bf.Token("TOKEN"), bf.Prefix("-"))

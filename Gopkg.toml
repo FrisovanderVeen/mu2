@@ -27,12 +27,12 @@
   name = "github.com/FrisovanderVeen/bf"
 
 [[constraint]]
-  name = "github.com/Sirupsen/logrus"
-  version = "1.0.4"
-
-[[constraint]]
   name = "github.com/bwmarrin/discordgo"
   version = "0.18.0"
+
+[[constraint]]
+  name = "github.com/op/go-logging"
+  version = "1.0.0"
 
 [[constraint]]
   name = "github.com/urfave/cli"

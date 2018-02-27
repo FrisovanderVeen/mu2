@@ -8,36 +8,36 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/FrisovanderVeen/bf"
+	bf "github.com/FrisovanderVeen/bf"
 )
 
-var ping = &bf.Command{
-	Name:    "ping",
-	Trigger: "ping",
-	Use:     "sends pong to the text channel",
-	Action: func(ctx bf.Context) {
+var ping = bf.NewCommand(
+	bf.Name("ping"),
+	bf.Trigger("ping"),
+	bf.Use("Sends pong to the text channel"),
+	bf.Action(func(ctx bf.Context) {
+		if err := ctx.SendMessage("pong"); err != nil {
+			ctx.Error(err)
+		}
+	}),
+)
+
+var pong = bf.NewCommand(
+	bf.Name("pong"),
+	bf.Trigger("pong"),
+	bf.Use("Sends ping to the text channel"),
+	bf.Action(func(ctx bf.Context) {
 		if err := ctx.SendMessage("ping"); err != nil {
 			ctx.Error(err)
 		}
-	},
-}
+	}),
+)
 
-var pong = &bf.Command{
-	Name:    "pong",
-	Trigger: "pong",
-	Use:     "sends ping to the text channel",
-	Action: func(ctx bf.Context) {
-		if err := ctx.SendMessage("ping"); err != nil {
-			ctx.Error(err)
-		}
-	},
-}
-
-var cp = &bf.Command{
-	Name:    "change prefix",
-	Trigger: "prefix",
-	Use:     "Chages the prefix for commands",
-	Action: func(ctx bf.Context) {
+var cp = bf.NewCommand(
+	bf.Name("change prefix"),
+	bf.Trigger("prefix"),
+	bf.Use("Chages the prefix for commands"),
+	bf.Action(func(ctx bf.Context) {
 		if strings.HasPrefix(ctx.Message, "prefix") {
 			ctx.Message = strings.TrimPrefix(ctx.Message, "prefix")
 		} else {
@@ -47,8 +47,8 @@ var cp = &bf.Command{
 			ctx.Message = strings.TrimPrefix(ctx.Message, " ")
 		}
 		ctx.Bot.Prefix = ctx.Message
-	},
-}
+	}),
+)
 
 func main() {
 	bot, err := bf.NewBot(bf.Token("TOKEN"), bf.Prefix("-"))

@@ -5,13 +5,7 @@
   branch = "master"
   name = "github.com/FrisovanderVeen/bf"
   packages = ["."]
-  revision = "f64e344e165e3f1f2793363c9b699762442c46ed"
-
-[[projects]]
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
+  revision = "004ed203abe845ea6e250848f4d4126fc02ac419"
 
 [[projects]]
   name = "github.com/bwmarrin/discordgo"
@@ -26,6 +20,12 @@
   version = "v1.2.0"
 
 [[projects]]
+  name = "github.com/op/go-logging"
+  packages = ["."]
+  revision = "b2cb9fa56473e98db8caba80237377e83fe44db5"
+  version = "v1"
+
+[[projects]]
   name = "github.com/urfave/cli"
   packages = ["."]
   revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
@@ -37,23 +37,13 @@
   packages = [
     "nacl/secretbox",
     "poly1305",
-    "salsa20/salsa",
-    "ssh/terminal"
+    "salsa20/salsa"
   ]
-  revision = "49796115aa4b964c318aad4f3084fdb41e9aa067"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/sys"
-  packages = [
-    "unix",
-    "windows"
-  ]
-  revision = "88d2dcc510266da9f7f8c7f34e1940716cab5f5c"
+  revision = "8c653846df49742c4c85ec37e5d9f8d3ba657895"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bf05317df594b23bf792755e90513261bfb1eb14780ee6cd788e4749b2d167ad"
+  inputs-digest = "d677466cd7019672e72493fd10092b14298812050e0ac17aa5cc8a22d1944480"
   solver-name = "gps-cdcl"
   solver-version = 1

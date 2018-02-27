@@ -12,14 +12,14 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-var test = &bf.Command{
-	Name:    "test",
-	Trigger: "test",
-	Use:     "trows a error containing the message",
-	Action: func(ctx bf.Context) {
+var test = &bf.NewCommand(
+	bf.Name("test"),
+	bf.Trigger("test"),
+	bf.Use("Trows a error containing the message"),
+	bf.Action(func(ctx bf.Context) {
 		ctx.Error(errors.New(ctx.Message))
-	},
-}
+	}),
+)
 
 func main() {
 	logger := logrus.New()

@@ -24,13 +24,13 @@ type Bot struct {
 	Prefix string
 	Token  string
 
-	Commands map[string]*Command
+	Commands map[string]CommandInterface
 }
 
 // NewBot creates a new bot
 func NewBot(options ...OptionFunc) (*Bot, error) {
 	bot := &Bot{
-		Commands:  make(map[string]*Command),
+		Commands:  make(map[string]CommandInterface),
 		ErrWriter: os.Stderr,
 		ErrPrefix: func() string {
 			return ""
@@ -104,17 +104,17 @@ func (b *Bot) AddHandler(handler interface{}) {
 }
 
 // AddCommand adds a command to the bot
-func (b *Bot) AddCommand(coms ...*Command) error {
+func (b *Bot) AddCommand(coms ...CommandInterface) error {
 	b.Mu.Lock()
 	defer b.Mu.Unlock()
 	double := false
 
 	for _, com := range coms {
-		if _, ok := b.Commands[com.Trigger]; ok {
+		if _, ok := b.Commands[com.Trigger()]; ok {
 			double = true
 			continue
 		}
-		b.Commands[com.Trigger] = com
+		b.Commands[com.Trigger()] = com
 	}
 
 	if double {
