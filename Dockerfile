@@ -9,4 +9,4 @@ WORKDIR /go/src/github.com/FrisovanderVeen/mu2
 RUN dep ensure
 RUN go install
 
-ENTRYPOINT [ "mu2" ]
+CMD [ "mu2" ]
