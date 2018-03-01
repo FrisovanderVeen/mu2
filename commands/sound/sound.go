@@ -80,16 +80,16 @@ func playQueue() {
 				}
 			}
 
-		sendsound:
+		sendSound:
 			for _, frame := range snd.content {
 				select {
 				case <-skip:
-					break sendsound
+					break sendSound
 				case <-stop:
 					for queue.Head() != nil {
 						_ = queue.Dequeue()
 					}
-					break sendsound
+					break sendSound
 				default:
 					vc.OpusSend <- frame
 				}
@@ -108,16 +108,16 @@ func playQueue() {
 					}
 				}
 
-			sendmoresound:
+			sendMoreSound:
 				for _, frame := range snd.content {
 					select {
 					case <-skip:
-						break sendmoresound
+						break sendMoreSound
 					case <-stop:
 						for queue.Head() != nil {
 							_ = queue.Dequeue()
 						}
-						break sendmoresound
+						break sendMoreSound
 					default:
 						vc.OpusSend <- frame
 					}
