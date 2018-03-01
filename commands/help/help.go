@@ -1,6 +1,8 @@
 package help
 
 import (
+	"fmt"
+
 	bf "github.com/FrisovanderVeen/bf"
 	"github.com/FrisovanderVeen/mu2/commands"
 	"github.com/bwmarrin/discordgo"
@@ -21,7 +23,7 @@ var _ = commands.Register(bf.NewCommand(
 				continue
 			}
 			embedItems = append(embedItems, &discordgo.MessageEmbedField{
-				Name:   com.Name(),
+				Name:   fmt.Sprintf("%s - %s", com.Trigger(), com.Name()),
 				Value:  com.Use(),
 				Inline: true,
 			})

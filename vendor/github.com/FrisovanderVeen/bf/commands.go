@@ -1,4 +1,4 @@
-package botFramework
+package bf
 
 import (
 	"strings"

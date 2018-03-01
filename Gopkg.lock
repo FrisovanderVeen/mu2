@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/FrisovanderVeen/bf"
   packages = ["."]
-  revision = "004ed203abe845ea6e250848f4d4126fc02ac419"
+  revision = "00f661f1198883cac1f65b8f91782d74cfecefee"
 
 [[projects]]
   name = "github.com/bwmarrin/discordgo"
@@ -18,6 +18,18 @@
   packages = ["."]
   revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
   version = "v1.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/jonas747/dca"
+  packages = ["."]
+  revision = "bf5d11669cdb8be779296c65addb0c82b8d43391"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/jonas747/ogg"
+  packages = ["."]
+  revision = "b4f6f4cf3757a3bf88eae9222045b99b9d76d8ca"
 
 [[projects]]
   name = "github.com/op/go-logging"
@@ -39,11 +51,17 @@
     "poly1305",
     "salsa20/salsa"
   ]
-  revision = "8c653846df49742c4c85ec37e5d9f8d3ba657895"
+  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
+
+[[projects]]
+  name = "gopkg.in/oleiade/lane.v1"
+  packages = ["."]
+  revision = "28f7c3f09254f12b51e620fa4db136ba58804762"
+  version = "v1.0.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d677466cd7019672e72493fd10092b14298812050e0ac17aa5cc8a22d1944480"
+  inputs-digest = "5b39c94a742abda4910ddd4271ef1c0e1116a5a1efc7004c9b9456f7f4f6bc48"
   solver-name = "gps-cdcl"
   solver-version = 1

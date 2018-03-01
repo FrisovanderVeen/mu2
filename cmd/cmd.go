@@ -15,6 +15,7 @@ import (
 	_ "github.com/FrisovanderVeen/mu2/commands/help"
 	_ "github.com/FrisovanderVeen/mu2/commands/info"
 	_ "github.com/FrisovanderVeen/mu2/commands/pingpong"
+	_ "github.com/FrisovanderVeen/mu2/commands/sound"
 )
 
 var log = logging.MustGetLogger("cmd")
