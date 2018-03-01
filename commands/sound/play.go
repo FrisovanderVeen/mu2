@@ -144,6 +144,10 @@ var _ = commands.Register(bf.NewCommand(
 			return
 		}
 
+		if err := ctx.SendMessage(fmt.Sprintf("Added %s - %s to queue", vid.Title, vid.Author)); err != nil {
+			log.Errorf("Could not send message: %v", err)
+		}
+
 		queue.Enqueue(sound{
 			ctx:     ctx,
 			view:    true,
