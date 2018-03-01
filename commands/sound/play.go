@@ -182,9 +182,15 @@ func enqueue(vidinf *ytdl.VideoInfo, ctx bf.Context) {
 		return
 	}
 
+	if err := ctx.SendMessage(fmt.Sprintf("Added %s - %s to queue", vidinf.Title, vidinf.Author)); err != nil {
+		log.Errorf("Could not send message: %v", err)
+	}
+
 	queue.Enqueue(sound{
 		ctx:     ctx,
-		view:    false,
+		author:  vidinf.Author,
+		name:    vidinf.Title,
+		view:    true,
 		content: content,
 	})
 }
