@@ -6,16 +6,16 @@ import (
 	"os/signal"
 	"syscall"
 
-	bf "github.com/FrisovanderVeen/bf"
 	"github.com/bwmarrin/discordgo"
+	"github.com/fvdveen/bf"
 	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 
-	"github.com/FrisovanderVeen/mu2/commands"
-	_ "github.com/FrisovanderVeen/mu2/commands/help"
-	_ "github.com/FrisovanderVeen/mu2/commands/info"
-	_ "github.com/FrisovanderVeen/mu2/commands/pingpong"
-	_ "github.com/FrisovanderVeen/mu2/commands/sound"
+	"github.com/fvdveen/mu2/commands"
+	_ "github.com/fvdveen/mu2/commands/help"
+	_ "github.com/fvdveen/mu2/commands/info"
+	_ "github.com/fvdveen/mu2/commands/pingpong"
+	_ "github.com/fvdveen/mu2/commands/sound"
 )
 
 var log = logging.MustGetLogger("cmd")

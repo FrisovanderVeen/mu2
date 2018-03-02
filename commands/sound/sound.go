@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/FrisovanderVeen/bf"
+	"github.com/fvdveen/bf"
 	"github.com/jonas747/dca"
 	"github.com/op/go-logging"
 	"gopkg.in/oleiade/lane.v1"

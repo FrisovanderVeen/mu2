@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/FrisovanderVeen/mu2/cmd"
+	"github.com/fvdveen/mu2/cmd"
 	logging "github.com/op/go-logging"
 )
 

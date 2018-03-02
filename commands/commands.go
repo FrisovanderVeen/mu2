@@ -1,7 +1,7 @@
 package commands
 
 import (
-	bf "github.com/FrisovanderVeen/bf"
+	bf "github.com/fvdveen/bf"
 	logging "github.com/op/go-logging"
 )
 

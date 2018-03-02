@@ -3,9 +3,9 @@ package help
 import (
 	"fmt"
 
-	bf "github.com/FrisovanderVeen/bf"
-	"github.com/FrisovanderVeen/mu2/commands"
 	"github.com/bwmarrin/discordgo"
+	"github.com/fvdveen/bf"
+	"github.com/fvdveen/mu2/commands"
 	logging "github.com/op/go-logging"
 )
 

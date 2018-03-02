@@ -2,16 +2,34 @@
 
 
 [[projects]]
-  branch = "master"
-  name = "github.com/FrisovanderVeen/bf"
+  name = "github.com/PuerkitoBio/goquery"
   packages = ["."]
-  revision = "00f661f1198883cac1f65b8f91782d74cfecefee"
+  revision = "09540e565986583836b5fc792fe951ec5fd201dd"
+  version = "v1.3.0"
+
+[[projects]]
+  name = "github.com/Sirupsen/logrus"
+  packages = ["."]
+  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
+  version = "v1.0.4"
+
+[[projects]]
+  name = "github.com/andybalholm/cascadia"
+  packages = ["."]
+  revision = "901648c87902174f774fac311d7f176f8647bdaa"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/bwmarrin/discordgo"
   packages = ["."]
   revision = "4a33b9bc7c56cfdb9bb244e33e83cb3941fe2bdc"
   version = "v0.18.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/fvdveen/bf"
+  packages = ["."]
+  revision = "e05083f629c24a7c193f00dc967b61e294954a3f"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -38,6 +56,12 @@
   version = "v1"
 
 [[projects]]
+  name = "github.com/rylio/ytdl"
+  packages = ["."]
+  revision = "bd30f781270fa4d6df59e2a49948cd157030a2c6"
+  version = "v0.5.1"
+
+[[projects]]
   name = "github.com/urfave/cli"
   packages = ["."]
   revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
@@ -49,9 +73,42 @@
   packages = [
     "nacl/secretbox",
     "poly1305",
-    "salsa20/salsa"
+    "salsa20/salsa",
+    "ssh/terminal"
   ]
   revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = [
+    "context",
+    "context/ctxhttp",
+    "html",
+    "html/atom"
+  ]
+  revision = "22ae77b79946ea320088417e4d50825671d82d57"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = [
+    "unix",
+    "windows"
+  ]
+  revision = "dd2ff4accc098aceecb86b36eaa7829b2a17b1c9"
+
+[[projects]]
+  branch = "master"
+  name = "google.golang.org/api"
+  packages = [
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
+    "googleapi/transport",
+    "youtube/v3"
+  ]
+  revision = "ab90adb3efa287b869ecb698db42f923cc734972"
 
 [[projects]]
   name = "gopkg.in/oleiade/lane.v1"
@@ -62,6 +119,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5b39c94a742abda4910ddd4271ef1c0e1116a5a1efc7004c9b9456f7f4f6bc48"
+  inputs-digest = "40969e21ce5e1889cd7cc4b32de3c147267b8f8c705d227f9af87ea19ca8075d"
   solver-name = "gps-cdcl"
   solver-version = 1

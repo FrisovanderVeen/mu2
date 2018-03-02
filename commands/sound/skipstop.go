@@ -1,8 +1,8 @@
 package sound
 
 import (
-	"github.com/FrisovanderVeen/bf"
-	"github.com/FrisovanderVeen/mu2/commands"
+	"github.com/fvdveen/bf"
+	"github.com/fvdveen/mu2/commands"
 )
 
 var _ = commands.Register(bf.NewCommand(

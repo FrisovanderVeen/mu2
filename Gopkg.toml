@@ -23,12 +23,12 @@
   root-package = "github.com/FrisovanderVeen/mu2"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/FrisovanderVeen/bf"
-
-[[constraint]]
   name = "github.com/bwmarrin/discordgo"
   version = "0.18.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/fvdveen/bf"
 
 [[constraint]]
   branch = "master"
@@ -39,8 +39,16 @@
   version = "1.0.0"
 
 [[constraint]]
+  name = "github.com/rylio/ytdl"
+  version = "0.5.1"
+
+[[constraint]]
   name = "github.com/urfave/cli"
   version = "1.20.0"
+
+[[constraint]]
+  branch = "master"
+  name = "google.golang.org/api"
 
 [[constraint]]
   name = "gopkg.in/oleiade/lane.v1"
