@@ -42,10 +42,11 @@ func init() {
 
 func runBot(tokenEnv, prefixEnv string) error {
 	logging.SetBackend(logging.NewBackendFormatter(logging.NewLogBackend(os.Stderr, "", 0), logging.MustStringFormatter(`%{color}%{time:15:04:05.000} %{module} ▶ %{level:.4s} %{id:03x} %{message} %{color:reset}`)))
+	commands.VERSION = VERSION
 
 	bot, err := bf.NewBot(getEnvVars(tokenEnv, prefixEnv))
 	if err != nil {
-		log.Critical("could not make bot: %v", err)
+		log.Critical("Could not make bot: %v", err)
 		return err
 	}
 
@@ -54,7 +55,7 @@ func runBot(tokenEnv, prefixEnv string) error {
 	})
 
 	if err := bot.AddCommand(commands.Commands...); err != nil {
-		log.Errorf("could not add command: %v", err)
+		log.Errorf("Could not add command: %v", err)
 		return err
 	}
 
@@ -73,7 +74,7 @@ func runBot(tokenEnv, prefixEnv string) error {
 	<-sc
 
 	if err := bot.Close(); err != nil {
-		log.Errorf("could not close session: %v", err)
+		log.Errorf("Could not close session: %v", err)
 		return err
 	}
 

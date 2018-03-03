@@ -43,6 +43,11 @@ var _ = commands.Register(bf.NewCommand(
 				Value:  "https://github.com/FrisovanderVeen/mu2",
 				Inline: true,
 			},
+			&discordgo.MessageEmbedField{
+				Name:   "Version",
+				Value:  commands.VERSION,
+				Inline: true,
+			},
 		}
 		embed := &discordgo.MessageEmbed{
 			Fields:      embedItems,

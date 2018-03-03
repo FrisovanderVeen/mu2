@@ -5,7 +5,10 @@ import (
 	logging "github.com/op/go-logging"
 )
 
-var log = logging.MustGetLogger("command")
+var (
+	log     = logging.MustGetLogger("command")
+	VERSION string
+)
 
 // Commands is the list of all commands
 var Commands = []bf.Command{}
