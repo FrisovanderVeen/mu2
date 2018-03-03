@@ -1,17 +1,17 @@
 package main
 
 import (
-	"os"
-
 	"github.com/fvdveen/mu2/cmd"
 	logging "github.com/op/go-logging"
 )
 
-var log = logging.MustGetLogger("main")
+var (
+	log     = logging.MustGetLogger("main")
+	VERSION = "0.1.0"
+)
 
 func main() {
-	app := cmd.NewApp()
-	if err := app.Run(os.Args); err != nil {
-		log.Critical("%v", err)
+	if err := cmd.Execute(VERSION); err != nil {
+		log.Critical(err.Error())
 	}
 }

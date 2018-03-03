@@ -1,1 +1,1 @@
-worker: mu2
+worker: mu2 run
