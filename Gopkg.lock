@@ -29,7 +29,7 @@
   branch = "master"
   name = "github.com/fvdveen/bf"
   packages = ["."]
-  revision = "e05083f629c24a7c193f00dc967b61e294954a3f"
+  revision = "e2b90064620b71ed10412968a8da5713c55bb824"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -108,7 +108,7 @@
     "googleapi/transport",
     "youtube/v3"
   ]
-  revision = "ab90adb3efa287b869ecb698db42f923cc734972"
+  revision = "3caa384156365e545aea85c3dca8c95bc666a94d"
 
 [[projects]]
   name = "gopkg.in/oleiade/lane.v1"

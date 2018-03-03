@@ -8,10 +8,10 @@ import (
 var log = logging.MustGetLogger("command")
 
 // Commands is the list of all commands
-var Commands = []bf.CommandInterface{}
+var Commands = []bf.Command{}
 
 // Register adds the command to Commands
-func Register(com bf.CommandInterface) bf.CommandInterface {
+func Register(com bf.Command) bf.Command {
 	Commands = append(Commands, com)
 	return com
 }

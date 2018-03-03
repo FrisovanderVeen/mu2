@@ -6,8 +6,17 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// Command is a simple implementation of the CommandInterface interface
-type Command struct {
+// Command describes a basic command
+type Command interface {
+	Action(Context)
+	Disabled() bool
+	Name() string
+	Use() string
+	Trigger() string
+}
+
+// Com is a simple implementation of the Command interface
+type Com struct {
 	A func(Context)
 	T string
 	U string
@@ -16,8 +25,8 @@ type Command struct {
 }
 
 // NewCommand creates a new command with the given options
-func NewCommand(options ...func(*Command)) *Command {
-	c := &Command{}
+func NewCommand(options ...func(*Com)) *Com {
+	c := &Com{}
 	for _, o := range options {
 		o(c)
 	}
@@ -26,72 +35,63 @@ func NewCommand(options ...func(*Command)) *Command {
 }
 
 // Action sets the action of the new command
-func Action(action func(Context)) func(*Command) {
-	return func(c *Command) {
+func Action(action func(Context)) func(*Com) {
+	return func(c *Com) {
 		c.A = action
 	}
 }
 
 // Name sets the name of the new command
-func Name(name string) func(*Command) {
-	return func(c *Command) {
+func Name(name string) func(*Com) {
+	return func(c *Com) {
 		c.N = name
 	}
 }
 
 // Use sets the use of the new command
-func Use(use string) func(*Command) {
-	return func(c *Command) {
+func Use(use string) func(*Com) {
+	return func(c *Com) {
 		c.U = use
 	}
 }
 
 // Trigger sets the trigger of the new command
-func Trigger(trigger string) func(*Command) {
-	return func(c *Command) {
+func Trigger(trigger string) func(*Com) {
+	return func(c *Com) {
 		c.T = trigger
 	}
 }
 
 // Disabled sets if the new command is disabled
-func Disabled(disabled bool) func(*Command) {
-	return func(c *Command) {
+func Disabled(disabled bool) func(*Com) {
+	return func(c *Com) {
 		c.D = disabled
 	}
 }
 
 // Action calls the command'ss action
-func (c *Command) Action(ctx Context) {
+func (c *Com) Action(ctx Context) {
 	c.A(ctx)
 }
 
 // Trigger returns the command's trigger
-func (c *Command) Trigger() string {
+func (c *Com) Trigger() string {
 	return c.T
 }
 
 // Use returns the command's use
-func (c *Command) Use() string {
+func (c *Com) Use() string {
 	return c.U
 }
 
 // Name returns the command's name
-func (c *Command) Name() string {
+func (c *Com) Name() string {
 	return c.N
 }
 
 // Disabled returns whether the command is disabled
-func (c *Command) Disabled() bool {
+func (c *Com) Disabled() bool {
 	return c.D
-}
-
-// CommandInterface describes a basic command
-type CommandInterface interface {
-	Action(Context)
-	Disabled() bool
-	Name() string
-	Use() string
-	Trigger() string
 }
 
 func (b *Bot) handleCommands(s *discordgo.Session, m *discordgo.MessageCreate) {
