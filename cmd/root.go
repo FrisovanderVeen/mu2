@@ -6,7 +6,8 @@ import (
 )
 
 var (
-	log     = logging.MustGetLogger("cmd")
+	log = logging.MustGetLogger("cmd")
+	// VERSION is the current version of the bot
 	VERSION string
 )
 
@@ -16,6 +17,7 @@ var rootCmd = &cobra.Command{
 	Long:  "",
 }
 
+// Execute runs the bot
 func Execute(version string) error {
 	VERSION = version
 	return rootCmd.Execute()

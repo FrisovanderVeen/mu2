@@ -16,6 +16,8 @@ var (
 	skip  = make(chan interface{})
 	stop  = make(chan interface{})
 	_     = startQueue()
+
+	playing bool
 )
 
 type sound struct {
@@ -53,16 +55,20 @@ func playQueue() {
 		queue = lane.NewQueue()
 	}
 	for {
+		playing = true
+
 		if queue.Head() != nil {
 			s := queue.Dequeue()
 			snd, ok := s.(sound)
 			if !ok {
+				playing = false
 				continue
 			}
 
 			vc, err := snd.ctx.JoinVoiceChannel(false, true)
 			if err != nil {
 				log.Errorf("Could not join voice channel: %v", err)
+				playing = false
 				continue
 			}
 
@@ -71,6 +77,7 @@ func playQueue() {
 				if err := vc.Disconnect(); err != nil {
 					log.Errorf("Could not disconnect: %v", err)
 				}
+				playing = false
 				continue
 			}
 
@@ -99,6 +106,7 @@ func playQueue() {
 				s = queue.Dequeue()
 				snd, ok := s.(sound)
 				if !ok {
+					playing = false
 					continue
 				}
 
@@ -132,5 +140,7 @@ func playQueue() {
 				log.Errorf("Could not disconnect: %v", err)
 			}
 		}
+
+		playing = false
 	}
 }

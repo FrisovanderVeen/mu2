@@ -10,7 +10,9 @@ var _ = commands.Register(bf.NewCommand(
 	bf.Trigger("skip"),
 	bf.Use("Skips the currently playing audio"),
 	bf.Action(func(ctx bf.Context) {
-		skip <- ctx.Message
+		if playing {
+			skip <- ctx.Message
+		}
 	}),
 ))
 
@@ -19,6 +21,8 @@ var _ = commands.Register(bf.NewCommand(
 	bf.Trigger("stop"),
 	bf.Use("Clears the queue and stops playing audio"),
 	bf.Action(func(ctx bf.Context) {
-		stop <- ctx.Message
+		if playing {
+			stop <- ctx.Message
+		}
 	}),
 ))

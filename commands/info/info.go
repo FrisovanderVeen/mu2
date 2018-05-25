@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/bwmarrin/discordgo"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/fvdveen/bf"
 	"github.com/fvdveen/mu2/commands"
 	logging "github.com/op/go-logging"
@@ -29,8 +30,8 @@ var _ = commands.Register(bf.NewCommand(
 				Inline: true,
 			},
 			&discordgo.MessageEmbedField{
-				Name:   "Uptime",
-				Value:  ctx.Bot.UpTime().String(),
+				Name:   "Running since",
+				Value:  humanize.Time(ctx.Bot.Time),
 				Inline: true,
 			},
 			&discordgo.MessageEmbedField{
@@ -40,7 +41,7 @@ var _ = commands.Register(bf.NewCommand(
 			},
 			&discordgo.MessageEmbedField{
 				Name:   "GitHub",
-				Value:  "https://github.com/FrisovanderVeen/mu2",
+				Value:  "https://github.com/fvdveen/mu2",
 				Inline: true,
 			},
 			&discordgo.MessageEmbedField{

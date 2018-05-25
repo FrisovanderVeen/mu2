@@ -6,7 +6,8 @@ import (
 )
 
 var (
-	log     = logging.MustGetLogger("command")
+	log = logging.MustGetLogger("command")
+	// VERSION is the current version of the bot
 	VERSION string
 )
 
