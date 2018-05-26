@@ -1,1 +1,0 @@
-worker: mu2 run

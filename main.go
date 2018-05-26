@@ -2,16 +2,12 @@ package main
 
 import (
 	"github.com/fvdveen/mu2/cmd"
-	logging "github.com/op/go-logging"
-)
-
-var (
-	log     = logging.MustGetLogger("main")
-	VERSION = "0.1.1"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	if err := cmd.Execute(VERSION); err != nil {
-		log.Critical(err.Error())
+	err := cmd.Execute()
+	if err != nil {
+		logrus.Fatal(err)
 	}
 }
