@@ -18,12 +18,14 @@ type voiceHandler struct {
 
 	paused atomic.Value
 	loop   atomic.Value
+	repeat atomic.Value
 
-	skipChan  chan interface{}
-	stopChan  chan interface{}
-	playChan  chan interface{}
-	pauseChan chan interface{}
-	loopChan  chan interface{}
+	skipChan   chan interface{}
+	stopChan   chan interface{}
+	playChan   chan interface{}
+	pauseChan  chan interface{}
+	loopChan   chan interface{}
+	repeatChan chan interface{}
 
 	mu sync.RWMutex
 	wg sync.WaitGroup
@@ -31,18 +33,20 @@ type voiceHandler struct {
 
 func newVoiceHandler(s *discordgo.Session, b *Bot, guildID string) *voiceHandler {
 	v := &voiceHandler{
-		queue:     queue.New(),
-		bot:       b,
-		guildID:   guildID,
-		sess:      s,
-		skipChan:  make(chan interface{}, 1),
-		stopChan:  make(chan interface{}, 1),
-		playChan:  make(chan interface{}, 1),
-		pauseChan: make(chan interface{}, 1),
-		loopChan:  make(chan interface{}, 1),
+		queue:      queue.New(),
+		bot:        b,
+		guildID:    guildID,
+		sess:       s,
+		skipChan:   make(chan interface{}, 1),
+		stopChan:   make(chan interface{}, 1),
+		playChan:   make(chan interface{}, 1),
+		pauseChan:  make(chan interface{}, 1),
+		loopChan:   make(chan interface{}, 1),
+		repeatChan: make(chan interface{}, 1),
 	}
 	v.paused.Store(false)
 	v.loop.Store(false)
+	v.repeat.Store(false)
 	v.wg.Add(1)
 	return v
 }
@@ -70,6 +74,7 @@ func (vh *voiceHandler) handle(textChanID, voiceChanID, guildID string) {
 			defer vh.bot.voiceMu.Unlock()
 			defer vh.mu.Unlock()
 
+			err := vh.leaveVoiceChannel()
 			if err != nil {
 				logrus.Errorf("[voiceHandler-handle] %v", err)
 			}
@@ -87,17 +92,30 @@ func (vh *voiceHandler) handle(textChanID, voiceChanID, guildID string) {
 		}
 
 		vh.playItem(vi)
-
-		if vh.loop.Load().(bool) {
+		if vh.repeat.Load().(bool) {
+			vh.addFront(vi)
+		} else if vh.loop.Load().(bool) {
 			vh.add(vi)
 		}
 	}
 }
 
 func (vh *voiceHandler) add(vi *voiceItem) {
+	if vh.queue == nil {
+		return
+	}
 	vh.mu.Lock()
 	defer vh.mu.Unlock()
 	vh.queue.PushBack(vi)
+}
+
+func (vh *voiceHandler) addFront(vi *voiceItem) {
+	if vh.queue == nil {
+		return
+	}
+	vh.mu.Lock()
+	defer vh.mu.Unlock()
+	vh.queue.PushFront(vi)
 }
 
 func (vh *voiceHandler) joinVoiceChannel(guildID, voiceChanID string) error {
@@ -126,36 +144,50 @@ func (vh *voiceHandler) leaveVoiceChannel() error {
 }
 
 func (vh *voiceHandler) playItem(vi *voiceItem) {
+playloop:
 	for _, f := range vi.data {
 		for vh.paused.Load().(bool) {
 			select {
-			case <-vh.playChan:
-				vh.paused.Store(false)
 			case <-vh.pauseChan:
 				vh.paused.Store(true)
+			case <-vh.playChan:
+				vh.paused.Store(false)
 			case <-vh.loopChan:
 				vh.loop.Store(!vh.loop.Load().(bool))
+			case <-vh.repeatChan:
+				vh.repeat.Store(!vh.repeat.Load().(bool))
 			case <-vh.skipChan:
 				vh.paused.Store(false)
+				break playloop
+			case <-vh.stopChan:
+				vh.mu.Lock()
+				vh.queue = nil
+				vh.mu.Unlock()
+				vh.paused.Store(false)
+				vh.loop.Store(false)
+				vh.repeat.Store(false)
 				return
 			}
 		}
 		select {
+		case <-vh.playChan:
+			vh.paused.Store(false)
 		case <-vh.pauseChan:
 			vh.paused.Store(true)
 		case <-vh.loopChan:
 			vh.loop.Store(!vh.loop.Load().(bool))
+		case <-vh.repeatChan:
+			vh.repeat.Store(!vh.repeat.Load().(bool))
 		case <-vh.skipChan:
 			vh.paused.Store(false)
-			return
+			break playloop
 		case <-vh.stopChan:
 			vh.mu.Lock()
-			for vh.queue.Length() != 0 {
-				vh.queue.PopFront()
-			}
+			vh.queue = nil
 			vh.mu.Unlock()
 			vh.paused.Store(false)
 			vh.loop.Store(false)
+			vh.repeat.Store(false)
 			return
 		case vh.vc.OpusSend <- f:
 		}

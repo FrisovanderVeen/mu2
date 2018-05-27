@@ -145,4 +145,25 @@ var commands = []*command{
 			b.voiceMu.Unlock()
 		},
 	},
+	{
+		name:        "repeat",
+		description: "Repeat the currently playing item",
+		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
+			c, err := b.sess.State.Channel(m.ChannelID)
+			if err != nil {
+				logrus.Error(err)
+				b.sess.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
+				return
+			}
+			b.voiceMu.Lock()
+			vh, ok := b.voiceHandlers[c.GuildID]
+			if !ok {
+				b.voiceMu.Unlock()
+				b.sess.ChannelMessageSend(m.ChannelID, "Bot has to playing to repeat")
+				return
+			}
+			vh.repeatChan <- 0
+			b.voiceMu.Unlock()
+		},
+	},
 }
