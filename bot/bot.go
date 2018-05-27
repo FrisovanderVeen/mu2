@@ -45,7 +45,5 @@ func (b *Bot) Close() error {
 	for _, vh := range b.voiceHandlers {
 		vh.stopChan <- 0
 	}
-	for len(b.voiceHandlers) != 0 {
-	}
 	return b.sess.Close()
 }

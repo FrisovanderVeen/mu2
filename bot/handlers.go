@@ -28,7 +28,7 @@ func (b *Bot) messageHandler() func(*discordgo.Session, *discordgo.MessageCreate
 		}
 		msg := strings.TrimPrefix(m.Content, b.conf.Prefix)
 		for _, com := range b.commands {
-			if msg == com.name || strings.HasPrefix(msg, com.name) {
+			if msg == com.name || strings.HasPrefix(msg, com.name+" ") {
 				msg = strings.TrimSpace(strings.TrimPrefix(com.name, msg))
 				com.run(b, m, msg)
 				return
