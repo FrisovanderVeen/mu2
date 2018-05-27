@@ -43,7 +43,7 @@ Edit config.yaml with the following items: your discord token, your desired pref
 ```yaml
 bot:
   token: "YOUR_DISCORD_TOKEN"
-  prefix: "YOUT_PREFIX"
+  prefix: "YOUR_PREFIX"
   invite-link: "https://discordapp.com/oauth2/authorize?client_id=YOUR_DISCORD_CLIENT_ID&scope=bot"
 ```
 
