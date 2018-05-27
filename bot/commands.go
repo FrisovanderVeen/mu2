@@ -13,21 +13,21 @@ type command struct {
 }
 
 var commands = []*command{
-	&command{
+	{
 		name:        "help",
 		description: "Gives help on all commands",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
 			b.sendHelp(m.ChannelID)
 		},
 	},
-	&command{
+	{
 		name:        "info",
 		description: "Gives info on the bot",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
 			b.sendInfo(m.ChannelID)
 		},
 	},
-	&command{
+	{
 		name:        "airhorn",
 		description: "Plays an annoying airhorn sound",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
@@ -40,7 +40,7 @@ var commands = []*command{
 			b.playAirhorn(m.Author.ID, m.ChannelID, c.GuildID)
 		},
 	},
-	&command{
+	{
 		name:        "skip",
 		description: "Skips the currently playing audio",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
@@ -61,7 +61,7 @@ var commands = []*command{
 			b.voiceMu.Unlock()
 		},
 	},
-	&command{
+	{
 		name:        "stop",
 		description: "Stops all audio and leaves the voice channel",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
@@ -82,7 +82,7 @@ var commands = []*command{
 			b.voiceMu.Unlock()
 		},
 	},
-	&command{
+	{
 		name:        "loop",
 		description: "Loop the queue, new elements can still be added",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
@@ -103,7 +103,7 @@ var commands = []*command{
 			b.voiceMu.Unlock()
 		},
 	},
-	&command{
+	{
 		name:        "play",
 		description: "Plays the currently playing audio",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
@@ -124,7 +124,7 @@ var commands = []*command{
 			b.voiceMu.Unlock()
 		},
 	},
-	&command{
+	{
 		name:        "pause",
 		description: "Pauses the currently playing audio",
 		run: func(b *Bot, m *discordgo.MessageCreate, msg string) {
