@@ -27,99 +27,12 @@ func (b *Bot) messageHandler() func(*discordgo.Session, *discordgo.MessageCreate
 			return
 		}
 		msg := strings.TrimPrefix(m.Content, b.conf.Prefix)
-		switch {
-		case msg == "info" || strings.HasPrefix(msg, "info "):
-			b.sendInfo(m.ChannelID)
-		case msg == "help" || strings.HasPrefix(msg, "help "):
-			b.sendHelp(m.ChannelID)
-		case msg == "airhorn" || strings.HasPrefix(msg, "airhorn "):
-			c, err := s.State.Channel(m.ChannelID)
-			if err != nil {
-				logrus.Error(err)
-				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
+		for _, com := range b.commands {
+			if msg == com.name || strings.HasPrefix(msg, com.name) {
+				msg = strings.TrimSpace(strings.TrimPrefix(com.name, msg))
+				com.run(b, m, msg)
 				return
 			}
-			b.playAirhorn(m.Author.ID, m.ChannelID, c.GuildID)
-		case msg == "skip" || strings.HasPrefix(msg, "skip "):
-			c, err := s.State.Channel(m.ChannelID)
-			if err != nil {
-				logrus.Error(err)
-				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
-				return
-			}
-			b.voiceMu.Lock()
-			vh, ok := b.voiceHandlers[c.GuildID]
-			if !ok {
-				b.voiceMu.Unlock()
-				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to skip")
-				return
-			}
-			vh.skipChan <- 0
-			b.voiceMu.Unlock()
-		case msg == "stop" || strings.HasPrefix(msg, "stop "):
-			c, err := s.State.Channel(m.ChannelID)
-			if err != nil {
-				logrus.Error(err)
-				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
-				return
-			}
-			b.voiceMu.Lock()
-			vh, ok := b.voiceHandlers[c.GuildID]
-			if !ok {
-				b.voiceMu.Unlock()
-				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to stop")
-				return
-			}
-			vh.stopChan <- 0
-			b.voiceMu.Unlock()
-		case msg == "loop" || strings.HasPrefix(msg, "loop "):
-			c, err := s.State.Channel(m.ChannelID)
-			if err != nil {
-				logrus.Error(err)
-				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
-				return
-			}
-			b.voiceMu.Lock()
-			vh, ok := b.voiceHandlers[c.GuildID]
-			if !ok {
-				b.voiceMu.Unlock()
-				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to loop")
-				return
-			}
-			vh.loopChan <- 0
-			b.voiceMu.Unlock()
-		case msg == "play" || strings.HasPrefix(msg, "play "):
-			c, err := s.State.Channel(m.ChannelID)
-			if err != nil {
-				logrus.Error(err)
-				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
-				return
-			}
-			b.voiceMu.Lock()
-			vh, ok := b.voiceHandlers[c.GuildID]
-			if !ok {
-				b.voiceMu.Unlock()
-				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to play")
-				return
-			}
-			vh.playChan <- 0
-			b.voiceMu.Unlock()
-		case msg == "pause" || strings.HasPrefix(msg, "pause "):
-			c, err := s.State.Channel(m.ChannelID)
-			if err != nil {
-				logrus.Error(err)
-				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
-				return
-			}
-			b.voiceMu.Lock()
-			vh, ok := b.voiceHandlers[c.GuildID]
-			if !ok {
-				b.voiceMu.Unlock()
-				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to pause")
-				return
-			}
-			vh.pauseChan <- 0
-			b.voiceMu.Unlock()
 		}
 	}
 }
@@ -133,15 +46,10 @@ func (b *Bot) readyHandler() func(*discordgo.Session, *discordgo.Ready) {
 func (b *Bot) sendHelp(channelID string) {
 	e := NewEmbed().
 		SetTitle("Mu2").
-		SetDescription("Help").
-		AddField("help", "Gives help on all commands").
-		AddField("info", "Gives info on the bot").
-		AddField("skip", "Skips the currently playing audio").
-		AddField("stop", "Stops all audio and leaves the voice channel").
-		AddField("loop", "Loop the queue, new elements can still be added").
-		AddField("play", "Plays the currently playing audio").
-		AddField("pause", "Pauses the currently playing audio").
-		AddField("airhorn", "Plays an annoying airhorn sound")
+		SetDescription("Help")
+	for _, com := range b.commands {
+		e.AddField(com.name, com.description)
+	}
 
 	b.sess.ChannelMessageSendEmbed(channelID, e.MessageEmbed)
 }
