@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/fvdveen/mu2.svg?branch=master)](https://travis-ci.org/fvdveen/mu2) [![Go Report Card](https://goreportcard.com/badge/github.com/fvdveen/mu2)](https://goreportcard.com/report/github.com/fvdveen/mu2)
+
 # Mu2: another discord music bot
 
 Mu2 is another discord music bot.
