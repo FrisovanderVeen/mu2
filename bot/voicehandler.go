@@ -13,9 +13,11 @@ type voiceHandler struct {
 	queue   *queue.Queue
 	bot     *Bot
 	sess    *discordgo.Session
+	vc      *discordgo.VoiceConnection
 	guildID string
-	paused  atomic.Value
-	loop    atomic.Value
+
+	paused atomic.Value
+	loop   atomic.Value
 
 	skipChan  chan interface{}
 	stopChan  chan interface{}
@@ -48,23 +50,16 @@ func newVoiceHandler(s *discordgo.Session, b *Bot, guildID string) *voiceHandler
 func (vh *voiceHandler) handle(textChanID, voiceChanID, guildID string) {
 	vh.wg.Wait()
 
-	vc, err := vh.sess.ChannelVoiceJoin(guildID, voiceChanID, false, true)
-	if err != nil {
-		logrus.Errorf("[voiceHandler-handle] %v", err)
-		vh.sess.ChannelMessageSend(textChanID, "something went wrong connecting to the voice channel try again later")
-		vh.bot.voiceMu.Lock()
-		defer vh.bot.voiceMu.Unlock()
-		delete(vh.bot.voiceHandlers, vh.guildID)
-		return
-	}
-
-	err = vc.Speaking(true)
+	err := vh.joinVoiceChannel(guildID, voiceChanID)
 	if err != nil {
 		logrus.Errorf("[voiceHandler-handle] %v", err)
 		vh.sess.ChannelMessageSend(textChanID, "something went wrong setting the speaking status")
 		vh.bot.voiceMu.Lock()
 		defer vh.bot.voiceMu.Unlock()
-		delete(vh.bot.voiceHandlers, vh.guildID)
+		err = vh.leaveVoiceChannel()
+		if err != nil {
+			logrus.Errorf("[voiceHandler-handle] %v", err)
+		}
 		return
 	}
 
@@ -74,9 +69,7 @@ func (vh *voiceHandler) handle(textChanID, voiceChanID, guildID string) {
 			vh.bot.voiceMu.Lock()
 			defer vh.bot.voiceMu.Unlock()
 			defer vh.mu.Unlock()
-			delete(vh.bot.voiceHandlers, vh.guildID)
-			vc.Speaking(false)
-			err := vc.Disconnect()
+
 			if err != nil {
 				logrus.Errorf("[voiceHandler-handle] %v", err)
 			}
@@ -93,41 +86,8 @@ func (vh *voiceHandler) handle(textChanID, voiceChanID, guildID string) {
 			vh.sess.ChannelMessageSend(vi.messageChannel, vi.message)
 		}
 
-	voiceloop:
-		for _, f := range vi.data {
-			for vh.paused.Load().(bool) {
-				select {
-				case <-vh.playChan:
-					vh.paused.Store(false)
-				case <-vh.pauseChan:
-					vh.paused.Store(true)
-				case <-vh.loopChan:
-					vh.loop.Store(!vh.loop.Load().(bool))
-				case <-vh.skipChan:
-					vh.paused.Store(false)
-					break voiceloop
-				}
-			}
-			select {
-			case <-vh.pauseChan:
-				vh.paused.Store(true)
-			case <-vh.loopChan:
-				vh.loop.Store(!vh.loop.Load().(bool))
-			case <-vh.skipChan:
-				vh.paused.Store(false)
-				break voiceloop
-			case <-vh.stopChan:
-				vh.mu.Lock()
-				for vh.queue.Length() != 0 {
-					vh.queue.PopFront()
-				}
-				vh.mu.Unlock()
-				vh.paused.Store(false)
-				vh.loop.Store(false)
-				break voiceloop
-			case vc.OpusSend <- f:
-			}
-		}
+		vh.playItem(vi)
+
 		if vh.loop.Load().(bool) {
 			vh.add(vi)
 		}
@@ -138,4 +98,66 @@ func (vh *voiceHandler) add(vi *voiceItem) {
 	vh.mu.Lock()
 	defer vh.mu.Unlock()
 	vh.queue.PushBack(vi)
+}
+
+func (vh *voiceHandler) joinVoiceChannel(guildID, voiceChanID string) error {
+	vc, err := vh.sess.ChannelVoiceJoin(guildID, voiceChanID, false, true)
+	if err != nil {
+		return err
+	}
+
+	err = vc.Speaking(true)
+	if err != nil {
+		return err
+	}
+
+	vh.vc = vc
+	return nil
+}
+
+func (vh *voiceHandler) leaveVoiceChannel() error {
+	delete(vh.bot.voiceHandlers, vh.guildID)
+	err := vh.vc.Speaking(false)
+	if err != nil {
+		return err
+	}
+
+	return vh.vc.Disconnect()
+}
+
+func (vh *voiceHandler) playItem(vi *voiceItem) {
+	for _, f := range vi.data {
+		for vh.paused.Load().(bool) {
+			select {
+			case <-vh.playChan:
+				vh.paused.Store(false)
+			case <-vh.pauseChan:
+				vh.paused.Store(true)
+			case <-vh.loopChan:
+				vh.loop.Store(!vh.loop.Load().(bool))
+			case <-vh.skipChan:
+				vh.paused.Store(false)
+				return
+			}
+		}
+		select {
+		case <-vh.pauseChan:
+			vh.paused.Store(true)
+		case <-vh.loopChan:
+			vh.loop.Store(!vh.loop.Load().(bool))
+		case <-vh.skipChan:
+			vh.paused.Store(false)
+			return
+		case <-vh.stopChan:
+			vh.mu.Lock()
+			for vh.queue.Length() != 0 {
+				vh.queue.PopFront()
+			}
+			vh.mu.Unlock()
+			vh.paused.Store(false)
+			vh.loop.Store(false)
+			return
+		case vh.vc.OpusSend <- f:
+		}
+	}
 }
