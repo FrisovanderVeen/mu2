@@ -47,12 +47,15 @@ func (b *Bot) messageHandler() func(*discordgo.Session, *discordgo.MessageCreate
 				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
 				return
 			}
+			b.voiceMu.Lock()
 			vh, ok := b.voiceHandlers[c.GuildID]
 			if !ok {
+				b.voiceMu.Unlock()
 				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to skip")
 				return
 			}
 			vh.skipChan <- 0
+			b.voiceMu.Unlock()
 		case msg == "stop" || strings.HasPrefix(msg, "stop "):
 			c, err := s.State.Channel(m.ChannelID)
 			if err != nil {
@@ -60,12 +63,15 @@ func (b *Bot) messageHandler() func(*discordgo.Session, *discordgo.MessageCreate
 				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
 				return
 			}
+			b.voiceMu.Lock()
 			vh, ok := b.voiceHandlers[c.GuildID]
 			if !ok {
+				b.voiceMu.Unlock()
 				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to stop")
 				return
 			}
 			vh.stopChan <- 0
+			b.voiceMu.Unlock()
 		case msg == "loop" || strings.HasPrefix(msg, "loop "):
 			c, err := s.State.Channel(m.ChannelID)
 			if err != nil {
@@ -73,12 +79,15 @@ func (b *Bot) messageHandler() func(*discordgo.Session, *discordgo.MessageCreate
 				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
 				return
 			}
+			b.voiceMu.Lock()
 			vh, ok := b.voiceHandlers[c.GuildID]
 			if !ok {
+				b.voiceMu.Unlock()
 				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to loop")
 				return
 			}
 			vh.loopChan <- 0
+			b.voiceMu.Unlock()
 		case msg == "play" || strings.HasPrefix(msg, "play "):
 			c, err := s.State.Channel(m.ChannelID)
 			if err != nil {
@@ -86,12 +95,15 @@ func (b *Bot) messageHandler() func(*discordgo.Session, *discordgo.MessageCreate
 				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
 				return
 			}
+			b.voiceMu.Lock()
 			vh, ok := b.voiceHandlers[c.GuildID]
 			if !ok {
+				b.voiceMu.Unlock()
 				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to play")
 				return
 			}
 			vh.playChan <- 0
+			b.voiceMu.Unlock()
 		case msg == "pause" || strings.HasPrefix(msg, "pause "):
 			c, err := s.State.Channel(m.ChannelID)
 			if err != nil {
@@ -99,12 +111,15 @@ func (b *Bot) messageHandler() func(*discordgo.Session, *discordgo.MessageCreate
 				s.ChannelMessageSend(m.ChannelID, "oops something went wrong, try again later")
 				return
 			}
+			b.voiceMu.Lock()
 			vh, ok := b.voiceHandlers[c.GuildID]
 			if !ok {
+				b.voiceMu.Unlock()
 				s.ChannelMessageSend(m.ChannelID, "Bot has to playing to pause")
 				return
 			}
 			vh.pauseChan <- 0
+			b.voiceMu.Unlock()
 		}
 	}
 }
