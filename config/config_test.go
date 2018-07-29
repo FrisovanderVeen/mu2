@@ -48,3 +48,21 @@ func TestLoad(t *testing.T) {
 		t.Errorf("Got: %+v, expected: %+v", conf, expected)
 	}
 }
+
+func TestDefaults(t *testing.T) {
+	expected := &config.Config{
+		Discord: config.Discord{
+			Prefix: "$",
+		},
+		Database: config.Database{
+			Type: "postgres",
+		},
+	}
+
+	c := &config.Config{}
+	c.Defaults()
+
+	if !reflect.DeepEqual(expected, c) {
+		t.Errorf("Expected: %+v, got: %+v", expected, c)
+	}
+}
