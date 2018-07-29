@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+  postgres:
+    environment: 
+      POSTGRES_PASSWORD: "mu2"
+      POSTGRES_USER: "mu2"
+      PGDATA: "/data/db"
+    image: "postgres:latest"
+    networks:
+      - "db"
+    restart: "always"
+  bot:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: "postgres"
+      DB_USER: "mu2"
+      DB_PASS: "mu2"
+      DB_SSL: "disable"
+    env_file:
+      - ".env"
+    networks:
+      - "db"
+    restart: "always"
+
+networks:
+  db:

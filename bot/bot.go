@@ -5,45 +5,76 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/fvdveen/mu2/config"
+	"github.com/fvdveen/mu2/db"
 )
 
-// Bot represents a discord bot
+// Bot is a discord bot
 type Bot struct {
-	conf *config.Bot
 	sess *discordgo.Session
+	db   db.Service
+	conf config.Config
 
-	commands      []*command
-	voiceHandlers map[string]*voiceHandler
-	voiceMu       sync.RWMutex
+	comMu    sync.RWMutex
+	commands map[string]*Command
 }
 
-// New creates a new bot
-func New(conf *config.Bot) (*Bot, error) {
+// New creates a new discord bot
+func New(opts ...OptionFunc) (*Bot, error) {
 	b := &Bot{
-		conf:          conf,
-		voiceHandlers: make(map[string]*voiceHandler),
+		commands: map[string]*Command{},
 	}
-	sess, err := discordgo.New("Bot " + conf.Token)
+
+	for _, opt := range opts {
+		opt(b)
+	}
+
+	sess, err := discordgo.New("Bot " + b.conf.Discord.Token)
 	if err != nil {
 		return nil, err
 	}
 	b.sess = sess
-	b.commands = commands
 
-	b.initHandlers()
+	b.Init()
 
-	return b, nil
+	return b, err
 }
 
-// Open opens the discord session
-func (b *Bot) Open() error {
+// Run runs the bot
+func (b *Bot) Run() error {
 	return b.sess.Open()
 }
 
-// Close closes the discord session
+// Close closes the bot
 func (b *Bot) Close() error {
-	for _, vh := range b.voiceHandlers {
-		vh.stopChan <- 0
-	}
 	return b.sess.Close()
+}
+
+// Init initialized the bot
+func (b *Bot) Init() {
+	b.sess.AddHandler(b.CommandHandler)
+	for _, c := range commands {
+		b.AddCommand(c)
+	}
+}
+
+// AddCommand adds a command to the bot
+func (b *Bot) AddCommand(c *Command) func() {
+	b.comMu.Lock()
+	defer b.comMu.Unlock()
+	b.commands[c.Name] = c
+
+	n := c.Name
+
+	return func() {
+		b.comMu.Lock()
+		defer b.comMu.Unlock()
+		delete(b.commands, n)
+	}
+}
+
+// GetCommand returns the command for the given trigger it will return nil if no command is found
+func (b *Bot) GetCommand(n string) *Command {
+	b.comMu.RLock()
+	defer b.comMu.RUnlock()
+	return b.commands[n]
 }

@@ -9,14 +9,11 @@ Mu2 is another discord music bot.
 * Prerequisites
 * Install
 * Configuration
+* Running
 
 ## Prerequisites
 
-Before installing make sure you have vgo installed
-
-```bash
-go get -u golang.org/x/vgo
-```
+Before installing make sure you have docker installed
 
 ## Install
 
@@ -28,25 +25,32 @@ git clone https://github.com/fvdveen/mu2
 
 Build the executable
 
-```bash
-vgo build
-```
-
 Create a config file
 
 ```bash
-touch config.yaml
+touch .env
 ```
 
 ## Configuration
 
-Edit config.yaml with the following items: your discord token, your desired prefix and your discord bot's client id
+Edit .env with the following items: 
+* your discord token
+* your desired prefix
+* your desired log-level for stdout and discord
+* your discord webhook
 
-```yaml
-bot:
-  token: "YOUR_DISCORD_TOKEN"
-  prefix: "YOUR_PREFIX"
-  invite-link: "https://discordapp.com/oauth2/authorize?client_id=YOUR_DISCORD_CLIENT_ID&scope=bot"
+```env
+DISCORD_TOKEN=YOUR_TOKEN
+DISCORD_PREFIX=$
+LOG_LEVEL_DISCORD=warn
+LOG_LEVEL=info
+LOG_WEBHOOK_DISCORD=YOUR_WEBHOOK
 ```
 
-Thats it you can now run the bot
+## Running
+
+Run docker-compose and you're good to go
+
+```bash
+docker-compose up
+```

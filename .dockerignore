@@ -1,0 +1,12 @@
+.git
+.gitignore
+.travis.yml
+.env
+LICENSE
+mu2
+mu2.exe
+README.md
+Dockerfile
+docker-compose.yml
+
+./static

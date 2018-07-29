@@ -1,7 +1,17 @@
 language: go
+
 go:
+   - "master"
    - "1.10.x"
 
+go_import_path: github.com/fvdveen/mu2
+
+install:
+  - go get -u -v gopkg.in/alecthomas/gometalinter.v2
+  - go get -u -v github.com/fvdveen/mu2
+  - gometalinter.v2 --install
+
 script: 
-  - go test ./...
-  - go build
+  - if [[ -z "$(go version | grep '1\.9')" ]]; then go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...; else go test -v ./...; fi
+  - go build ./...
+  - gometalinter.v2 --vendor
