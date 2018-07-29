@@ -15,3 +15,6 @@ script:
   - if [[ -z "$(go version | grep '1\.9')" ]]; then go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...; else go test -v ./...; fi
   - go build ./...
   - gometalinter.v2 --vendor
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
