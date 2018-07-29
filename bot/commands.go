@@ -61,7 +61,7 @@ func (b *Bot) CommandHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	g, err := s.Guild(c.GuildID)
 	if err != nil {
-		logrus.Error("Could not get guild: %v", err)
+		logrus.Errorf("Could not get guild: %v", err)
 		return
 	}
 	ctx := &Context{
@@ -128,7 +128,7 @@ var commands = []*Command{
 			}
 
 			if err := c.B.db.RemoveCommand(c.G.ID, c.Args[0]); err != nil {
-				logrus.Error("[unlearn] Could not remove command: %v", err)
+				logrus.Errorf("[unlearn] Could not remove command: %v", err)
 				return
 			}
 
