@@ -5,43 +5,73 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/fvdveen/mu2/db"
-
-	"github.com/fvdveen/mu2/bot"
-	"github.com/fvdveen/mu2/config"
-	"github.com/joho/godotenv"
 	"github.com/kz/discordrus"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/fvdveen/mu2/config"
+	"github.com/fvdveen/mu2/db"
 
 	// Register dbs
 	_ "github.com/fvdveen/mu2/db/postgres"
 )
 
 var globalFlags = []cli.Flag{
-	&cli.BoolFlag{
-		Name:  "dotenv",
-		Usage: "Load environment variables from a .env file",
+	&cli.StringFlag{
+		Name:    "token",
+		Usage:   "discord token",
+		EnvVars: []string{"DISCORD_TOKEN"},
 	},
 	&cli.StringFlag{
-		Name:  "dotenv-loc",
-		Usage: "Location of .env file (default: .env)",
+		Name:    "prefix",
+		Usage:   "discord prefix",
+		Value:   "$",
+		EnvVars: []string{"DISCORD_PREFIX"},
 	},
 	&cli.StringFlag{
-		Name:  "log-level",
-		Usage: "Level of logging messages displayed",
-		Value: "info",
+		Name:    "log-level",
+		Usage:   "log level for stdout",
+		EnvVars: []string{"LOG_LEVEL"},
 	},
-	&cli.BoolFlag{
-		Name:  "dev",
-		Usage: "Sets dotenv to true and the log-level to debug",
+	&cli.StringFlag{
+		Name:    "discord-webhook",
+		Usage:   "discord webhook for logging",
+		EnvVars: []string{"LOG_WEBHOOK_DISCORD"},
+	},
+	&cli.StringFlag{
+		Name:    "discord-log-level",
+		Usage:   "log level for discord",
+		EnvVars: []string{"LOG_LEVEL_DISCORD"},
+	},
+	&cli.StringFlag{
+		Name:    "db-host",
+		Usage:   "host address for database",
+		EnvVars: []string{"DB_HOST"},
+	},
+	&cli.StringFlag{
+		Name:    "db-user",
+		Usage:   "user for database",
+		EnvVars: []string{"DB_USER"},
+	},
+	&cli.StringFlag{
+		Name:    "db-password",
+		Usage:   "password for database",
+		EnvVars: []string{"DB_PASS"},
+	},
+	&cli.StringFlag{
+		Name:    "db-ssl",
+		Usage:   "ssl type for database",
+		EnvVars: []string{"DB_SSL"},
+	},
+	&cli.StringFlag{
+		Name:    "db-type",
+		Usage:   "database type",
+		EnvVars: []string{"DB_TYPE"},
 	},
 }
 
 func run(c *cli.Context) error {
-	conf := config.Load()
-	conf.Defaults()
-	setupLogger(conf.Log)
+	conf := config.Load(c)
 
 	db, err := db.Get(conf.Database)
 	if err != nil {
@@ -73,49 +103,15 @@ func run(c *cli.Context) error {
 	return nil
 }
 
-func setup(c *cli.Context) error {
-	if c.Bool("dotenv") || c.Bool("dev") {
-		loc := ".env"
-		if c.String("dotenv-loc") != "" {
-			loc = c.String("dotenv-loc")
-		}
-		err := godotenv.Load(loc)
-		if err != nil {
-			logrus.Fatalf("Could not load .env file: %v", err)
-
-			return nil
-		}
-	}
-
-	lvl := c.String("log-level")
-	if lvl != "" {
-		err := os.Setenv("LOG_LEVEL", lvl)
-		if err != nil {
-			logrus.Fatalf("Could not set config value %s: %v", "LOG_LEVEL", err)
-
-			return nil
-		}
-	}
-
-	if c.Bool("dev") {
-		err := os.Setenv("LOG_LEVEL", "debug")
-		if err != nil {
-			logrus.Fatalf("Could not set config value %s: %v", "LOG_LEVEL", err)
-
-			return nil
-		}
-	}
-
-	return nil
-}
-
 // New creates a new cli app
 func New() *cli.App {
 	app := &cli.App{
-		Name:   "Mu2",
-		Usage:  "A discord bot",
-		Flags:  globalFlags,
-		Before: setup,
+		Name:  "Mu2",
+		Usage: "A discord bot",
+		Flags: globalFlags,
+		Before: func(c *cli.Context) error {
+			return nil
+		},
 		Action: run,
 	}
 
