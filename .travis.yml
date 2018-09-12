@@ -8,7 +8,6 @@ go_import_path: github.com/fvdveen/mu2
 
 install:
   - go get -u -v gopkg.in/alecthomas/gometalinter.v2
-  - go get -u -v github.com/fvdveen/mu2
   - gometalinter.v2 --install
 
 script: 
