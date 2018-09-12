@@ -30,23 +30,11 @@ func (b *Bot) commandHandler() func(s *discordgo.Session, m *discordgo.MessageCr
 
 		c, err := b.Command(msg[0])
 		if err != nil {
-			ch, err := s.State.Channel(m.ChannelID)
+			c, err = b.dbCommand(s, m, msg[0])
 			if err != nil {
-				ch, err = s.Channel(m.ChannelID)
-				if err != nil {
-					logrus.WithField("handler", "command").Errorf("Get channel: %v", err)
-				}
-			}
-
-			i, err := b.db.Get(ch.GuildID, msg[0])
-			if err == db.ErrItemNotFound {
-				return
-			} else if err != nil {
-				logrus.WithField("handler", "command").Errorf("database get: %v", err)
+				logrus.WithField("handler", "command").Errorf("Get command: %v", err)
 				return
 			}
-
-			c = dbCommand(i)
 		}
 
 		ctx := &defaultContext{
@@ -124,9 +112,11 @@ func (b *Bot) learnCommands() []Command {
 			_, err = b.db.Get(g.ID, args[0])
 			if err != nil && err != db.ErrItemNotFound {
 				logrus.WithField("command", "learn").Errorf("Get item: %v", err)
+				return
 			} else if err == nil {
 				if err := c.Send("haha, no"); err != nil {
-					logrus.WithField("command", "learn").Errorf("Send message: %v")
+					logrus.WithField("command", "learn").Errorf("Send message: %v", "haha, no")
+					return
 				}
 			}
 
@@ -144,4 +134,23 @@ func (b *Bot) learnCommands() []Command {
 			}
 		}),
 	}
+}
+
+func (b *Bot) dbCommand(s *discordgo.Session, m *discordgo.MessageCreate, msg string) (Command, error) {
+	ch, err := s.State.Channel(m.ChannelID)
+	if err != nil {
+		ch, err = s.Channel(m.ChannelID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	i, err := b.db.Get(ch.GuildID, msg)
+	if err == db.ErrItemNotFound {
+		return nil, db.ErrItemNotFound
+	} else if err != nil {
+		return nil, err
+	}
+
+	return dbCommand(i), nil
 }
