@@ -13,7 +13,7 @@ Mu2 is another discord music bot.
 
 ## Prerequisites
 
-Before installing make sure you have docker installed
+Before installing make sure you have docker and docker-compose installed
 
 ## Install
 
@@ -40,11 +40,11 @@ Edit .env with the following items:
 * your discord webhook
 
 ```env
-DISCORD_TOKEN=YOUR_TOKEN
-DISCORD_PREFIX=$
-LOG_LEVEL_DISCORD=warn
-LOG_LEVEL=info
-LOG_WEBHOOK_DISCORD=YOUR_WEBHOOK
+MU2_DISCORD_TOKEN=YOUR_TOKEN
+MU2_DISCORD_PREFIX=$
+MU2_LOG_LEVEL_DISCORD=warn
+MU2_LOG_LEVEL=info
+MU2_LOG_WEBHOOK_DISCORD=YOUR_WEBHOOK
 ```
 
 ## Running

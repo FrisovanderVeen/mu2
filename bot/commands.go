@@ -9,188 +9,139 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Context holds all the values required by commands
-type Context struct {
-	B    *Bot
-	S    *discordgo.Session
-	M    *discordgo.MessageCreate
-	G    *discordgo.Guild
-	C    *discordgo.Channel
-	Args []string
+// Command is a command in the bot
+type Command interface {
+	Name() string
+	Help() string
+	Run(Context, []string)
 }
 
-// Command is a command used by the bot
-type Command struct {
-	Name   string
-	Use    string
-	Action func(*Context)
-}
-
-// CommandHandler is the handler the bot uses for commands
-func (b *Bot) CommandHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == s.State.User.ID {
-		return
-	}
-
-	if strings.Contains(strings.ToLower(m.Content), "ligma") {
-		s.ChannelMessageSend(m.ChannelID, "Ligma fucking balls lmao :joy:")
-	}
-
-	if !strings.HasPrefix(m.Content, b.conf.Discord.Prefix) {
-		return
-	}
-
-	args := strings.Split(strings.TrimPrefix(m.Content, b.conf.Discord.Prefix), " ")
-	c, err := s.Channel(m.ChannelID)
-	if err != nil {
-		logrus.Errorf("Could not get channel: %v", err)
-		return
-	}
-
-	com := b.GetCommand(args[0])
-	if com == nil {
-		dbC, err := b.db.Command(c.GuildID, args[0])
-		if err == db.ErrNoCommand {
-			return
-		} else if err != nil {
-			logrus.Errorf("Could not get command: %s: %v", args[0], err)
+func (b *Bot) commandHandler() func(s *discordgo.Session, m *discordgo.MessageCreate) {
+	return func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if m.Author.ID == s.State.User.ID {
 			return
 		}
-		s.ChannelMessageSend(m.ChannelID, dbC.Response)
-		return
-	}
-	g, err := s.Guild(c.GuildID)
-	if err != nil {
-		logrus.Errorf("Could not get guild: %v", err)
-		return
-	}
-	ctx := &Context{
-		B:    b,
-		S:    s,
-		M:    m,
-		C:    c,
-		G:    g,
-		Args: args[1:],
-	}
-	com.Action(ctx)
-}
 
-var commands = []*Command{
-	{
-		Name: "learn",
-		Use:  "Learns a new message-response style command",
-		Action: func(c *Context) {
-			if len(c.Args) < 1 {
-				return
-			}
-			if com := c.B.GetCommand(c.Args[0]); com != nil {
-				c.S.ChannelMessageSend(c.M.ChannelID, fmt.Sprintf("I'm sorry %s, I'm afraid I can't let you do that", c.M.Author.Username))
-				return
-			}
-			_, err := c.B.db.Command(c.G.ID, c.Args[0])
-			if err == nil {
-				c.S.ChannelMessageSend(c.M.ChannelID, fmt.Sprintf("I'm sorry %s, I'm afraid I can't let you do that", c.M.Author.Username))
-				return
+		if !strings.HasPrefix(m.Content, b.conf.Prefix) {
+			return
+		}
 
-			} else if err != nil && err != db.ErrNoCommand {
-				logrus.Errorf("[learn] Could not get commands: %v", err)
-				return
-			}
+		msg := strings.Split(strings.TrimPrefix(m.Content, b.conf.Prefix), " ")
 
-			if len(c.Args) < 2 {
-				return
-			}
-
-			com := &db.Command{
-				GID:      c.G.ID,
-				Name:     c.Args[0],
-				Response: strings.Join(c.Args[1:], " "),
-			}
-
-			if err := c.B.db.AddCommand(com); err != nil {
-				logrus.Errorf("[learn] Could not add command: %v", err)
-				return
-			}
-
-			c.S.ChannelMessageSend(c.M.ChannelID, fmt.Sprintf("Learned command: %s succesfully", c.Args[0]))
-		},
-	},
-	{
-		Name: "unlearn",
-		Use:  "Removes a learned command",
-		Action: func(c *Context) {
-			if len(c.Args) < 1 {
-				return
-			}
-			if com := c.B.GetCommand(c.Args[0]); com != nil {
-				c.S.ChannelMessageSend(c.M.ChannelID, "Haha, no")
-				return
-			}
-
-			if err := c.B.db.RemoveCommand(c.G.ID, c.Args[0]); err != nil {
-				logrus.Errorf("[unlearn] Could not remove command: %v", err)
-				return
-			}
-
-			c.S.ChannelMessageSend(c.M.ChannelID, fmt.Sprintf("Unlearned command: %s succesfully", c.Args[0]))
-		},
-	},
-	{
-		Name: "learn-server",
-		Use:  "Learns a new message-response style command to the given server-ID",
-		Action: func(c *Context) {
-			if len(c.Args) < 2 {
-				return
-			}
-			if com := c.B.GetCommand(c.Args[0]); com != nil {
-				c.S.ChannelMessageSend(c.M.ChannelID, fmt.Sprintf("I'm sorry %s, I'm afraid I can't let you do that", c.M.Author.Username))
-				return
-			}
-			_, err := c.B.db.Command(c.G.ID, c.Args[0])
-			if err == nil {
-				c.S.ChannelMessageSend(c.M.ChannelID, fmt.Sprintf("I'm sorry %s, I'm afraid I can't let you do that", c.M.Author.Username))
-				return
-
-			} else if err != nil && err != db.ErrNoCommand {
-				logrus.Errorf("[learn-server] Could not get commands: %v", err)
-				return
-			}
-
-			g, err := c.S.Guild(c.Args[1])
+		c, err := b.Command(msg[0])
+		if err != nil {
+			ch, err := s.State.Channel(m.ChannelID)
 			if err != nil {
-				logrus.Errorf("[learn-server] Could not get guild: %v", err)
-				return
-			}
-
-			var in bool
-
-			for _, m := range g.Members {
-				if m.User.ID == c.M.Author.ID {
-					in = true
+				ch, err = s.Channel(m.ChannelID)
+				if err != nil {
+					logrus.WithField("handler", "command").Errorf("Get channel: %v", err)
 				}
 			}
 
-			if !in {
-				c.S.ChannelMessageSend(c.M.ChannelID, "One of us isn't in that server")
+			i, err := b.db.Get(ch.GuildID, msg[0])
+			if err == db.ErrItemNotFound {
+				return
+			} else if err != nil {
+				logrus.WithField("handler", "command").Errorf("database get: %v", err)
 				return
 			}
 
-			if len(c.Args) < 3 {
-				return
+			c = dbCommand(i)
+		}
+
+		ctx := &defaultContext{
+			s: s,
+			m: m,
+			b: b,
+		}
+
+		c.Run(ctx, msg[1:])
+	}
+}
+
+// NewCommand creates a new command
+func NewCommand(name string, description string, action func(Context, []string)) Command {
+	return &defaultCommand{
+		n: name,
+		d: description,
+		a: action,
+	}
+}
+
+type defaultCommand struct {
+	n string
+	d string
+	a func(Context, []string)
+}
+
+func (c defaultCommand) Name() string {
+	return c.n
+}
+
+func (c defaultCommand) Help() string {
+	return c.d
+}
+
+func (c defaultCommand) Run(ctx Context, args []string) {
+	c.a(ctx, args)
+}
+
+// HelpCommand returns the default help command
+func (b *Bot) HelpCommand() Command {
+	return NewCommand("help", "Sends an help message", func(c Context, _ []string) {
+		var msg string
+
+		for _, c := range b.Commands() {
+			msg = fmt.Sprintf("%s`%s%s` %s\n", msg, b.conf.Prefix, c.Name(), c.Help())
+		}
+
+		if err := c.Send(msg); err != nil {
+			logrus.WithField("command", "help").Errorf("Send message: %v", err)
+		}
+	})
+}
+
+func dbCommand(i *db.Item) Command {
+	return NewCommand("", "", func(c Context, _ []string) {
+		if err := c.Send(i.Response); err != nil {
+			logrus.WithFields(map[string]interface{}{
+				"command": "_learnable",
+				"item":    i.Message,
+				"guildID": i.GuildID,
+			}).Errorf("Send message: %v", err)
+		}
+	})
+}
+
+func (b *Bot) learnCommands() []Command {
+	return []Command{
+		NewCommand("learn", "Teach a message-response command to the bot", func(c Context, args []string) {
+			g, err := c.Guild()
+			if err != nil {
+				logrus.WithField("command", "learn").Errorf("Get guild: %v", err)
 			}
 
-			com := &db.Command{
-				GID:      c.Args[1],
-				Name:     c.Args[0],
-				Response: strings.Join(c.Args[2:], " "),
+			_, err = b.db.Get(g.ID, args[0])
+			if err != nil && err != db.ErrItemNotFound {
+				logrus.WithField("command", "learn").Errorf("Get item: %v", err)
+			} else if err == nil {
+				if err := c.Send("haha, no"); err != nil {
+					logrus.WithField("command", "learn").Errorf("Send message: %v")
+				}
 			}
 
-			if err := c.B.db.AddCommand(com); err != nil {
-				logrus.Errorf("[learn-server] Could not add command: %v", err)
-				return
+			err = b.db.New(&db.Item{
+				Message:  args[0],
+				Response: strings.Join(args[1:], " "),
+				GuildID:  g.ID,
+			})
+			if err != nil {
+				logrus.WithField("command", "learn").Errorf("Store item: %v", err)
 			}
 
-			c.S.ChannelMessageSend(c.M.ChannelID, fmt.Sprintf("Learned command: %s succesfully", c.Args[0]))
-		},
-	},
+			if err := c.Send(fmt.Sprintf("Learned %s succesfully", args[0])); err != nil {
+				logrus.WithField("command", "learn").Errorf("Send message: %v", err)
+			}
+		}),
+	}
 }

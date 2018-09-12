@@ -15,10 +15,11 @@ services:
     depends_on:
       - postgres
     environment:
-      DB_HOST: "postgres"
-      DB_USER: "mu2"
-      DB_PASS: "mu2"
-      DB_SSL: "disable"
+      MU2_DATABASE_HOST: "postgres"
+      MU2_DATABASE_USER: "mu2"
+      MU2_DATABASE_PASSWORD: "mu2"
+      MU2_DATABASE_SSL: "disable"
+      MU2_DATABASE_TYPE: "postgres"
     env_file:
       - ".env"
     networks:

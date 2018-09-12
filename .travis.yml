@@ -2,7 +2,7 @@ language: go
 
 go:
    - "master"
-   - "1.10.x"
+   - "1.11.x"
 
 go_import_path: github.com/fvdveen/mu2
 

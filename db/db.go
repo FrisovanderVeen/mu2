@@ -6,45 +6,46 @@ import (
 	"github.com/fvdveen/mu2/config"
 )
 
-var dbs = map[string]DBFunc{}
+var fs = make(map[string]Factory)
 
 var (
-	// ErrDBNotFound is used when the given database type is not found
-	ErrDBNotFound = errors.New("db not found")
-	// ErrNoCommand is used when the given command is not found
-	ErrNoCommand = errors.New("command doesn't exist")
+	// ErrDBNotFound is used when a db is not found
+	ErrDBNotFound = errors.New("db type not found")
+
+	// ErrItemNotFound is used when an item is not found in the db
+	ErrItemNotFound = errors.New("item not found in db")
 )
 
-// DBFunc creates a new database
-type DBFunc func(config.Database) (Service, error)
+// Factory creates a service
+type Factory func(config.Database) (Service, error)
 
-// Service is a service that holds learned commands
+// Service holds Items
 type Service interface {
-	Command(gID, n string) (*Command, error)
-	AddCommand(*Command) error
-	RemoveCommand(gID, n string) error
+	New(*Item) error
+	// Get takes in the guildID and the name of the command and returns the stored item
+	Get(string, string) (*Item, error)
+	// Remove takes in the guildID and the name of the command and removes it
+	Remove(string, string) error
+	All() (map[string][]*Item, error)
 }
 
-// Command represents a command in the database
-type Command struct {
-	ID       int
-	GID      string
-	Name     string
-	Response string
+// Item is a key-value mapped item
+type Item struct {
+	GuildID, Message, Response string
 }
 
-// Register adds a new DBFunc
-func Register(n string, db DBFunc) DBFunc {
-	dbs[n] = db
-
-	return db
+// Register registers a factory
+func Register(name string, f Factory) Factory {
+	fs[name] = f
+	return f
 }
 
-// Get creates a new database
-func Get(c config.Database) (Service, error) {
-	dbFunc, ok := dbs[c.Type]
+// Get creates a service based on the given configuration
+func Get(conf config.Database) (Service, error) {
+	f, ok := fs[conf.Type]
 	if !ok {
 		return nil, ErrDBNotFound
 	}
-	return dbFunc(c)
+
+	return f(conf)
 }
