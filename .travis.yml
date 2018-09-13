@@ -12,8 +12,9 @@ install:
 
 script: 
   - GOPATH="" go mod download
-  - if [[ -z "$(go version | grep '1\.9')" ]]; then go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...; else GOPATH="" go test -v ./...; fi
-  - GOPATH="" go build ./...
+  - GOPATH="" go mod vendor
+  - if [[ -z "$(go version | grep '1\.9')" ]]; then go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...; else go test -v ./...; fi
+  - go build ./...
   - gometalinter.v2 --vendor
 
 after_success:
