@@ -26,7 +26,10 @@ type Service interface {
 	Get(string, string) (*Item, error)
 	// Remove takes in the guildID and the name of the command and removes it
 	Remove(string, string) error
-	All() (map[string][]*Item, error)
+	All() ([]*Item, error)
+	// Ping is a health check for the db
+	// if it fails it returns a non-nil error
+	Ping() error
 }
 
 // Item is a key-value mapped item

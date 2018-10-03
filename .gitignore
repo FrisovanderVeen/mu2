@@ -2,4 +2,6 @@ mu2
 mu2.exe
 
 .env
+config.json
 mu2.yml
+data/**/*

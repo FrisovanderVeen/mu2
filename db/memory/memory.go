@@ -70,19 +70,21 @@ func (s *service) Remove(guildID, n string) error {
 	return nil
 }
 
-func (s *service) All() (map[string][]*db.Item, error) {
+func (s *service) All() ([]*db.Item, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	ms := make(map[string][]*db.Item)
+	var is []*db.Item
 
-	for n, m := range s.items {
-		is := []*db.Item{}
+	for _, m := range s.items {
 		for _, i := range m {
 			is = append(is, i)
 		}
-		ms[n] = is
 	}
 
-	return ms, nil
+	return is, nil
+}
+
+func (s *service) Ping() error {
+	return nil
 }

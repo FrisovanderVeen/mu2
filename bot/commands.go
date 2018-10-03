@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -16,23 +17,28 @@ type Command interface {
 	Run(Context, []string)
 }
 
-func (b *Bot) commandHandler() func(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (b *bot) commandHandler() func(s *discordgo.Session, m *discordgo.MessageCreate) {
 	return func(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if m.Author.ID == s.State.User.ID {
 			return
 		}
 
-		if !strings.HasPrefix(m.Content, b.conf.Prefix) {
+		p := b.Prefix()
+
+		if !strings.HasPrefix(m.Content, p) {
 			return
 		}
 
-		msg := strings.Split(strings.TrimPrefix(m.Content, b.conf.Prefix), " ")
+		msg := strings.Split(strings.TrimPrefix(m.Content, p), " ")
 
 		c, err := b.Command(msg[0])
 		if err != nil {
 			c, err = b.dbCommand(s, m, msg[0])
-			if err != nil {
-				logrus.WithField("handler", "command").Errorf("Get command: %v", err)
+			if err == db.ErrItemNotFound {
+				logrus.WithFields(map[string]interface{}{"type": "handler", "handler": "command"}).Debugf("Command not found: %s", msg[0])
+				return
+			} else if err != nil {
+				logrus.WithFields(map[string]interface{}{"type": "handler", "handler": "command"}).Errorf("Get command: %v", err)
 				return
 			}
 		}
@@ -75,16 +81,51 @@ func (c defaultCommand) Run(ctx Context, args []string) {
 }
 
 // HelpCommand returns the default help command
-func (b *Bot) HelpCommand() Command {
+func (b *bot) HelpCommand() Command {
 	return NewCommand("help", "Sends an help message", func(c Context, _ []string) {
 		var msg string
+		p := b.Prefix()
 
 		for _, c := range b.Commands() {
-			msg = fmt.Sprintf("%s`%s%s` %s\n", msg, b.conf.Prefix, c.Name(), c.Help())
+			msg = fmt.Sprintf("%s`%s%s` %s\n", msg, p, c.Name(), c.Help())
 		}
 
 		if err := c.Send(msg); err != nil {
-			logrus.WithField("command", "help").Errorf("Send message: %v", err)
+			logrus.WithFields(map[string]interface{}{"type": "command", "command": "help"}).Errorf("Send message: %v", err)
+			return
+		}
+	})
+}
+
+// InfoCommand returns the default help command
+func (b *bot) InfoCommand() Command {
+	return NewCommand("info", "Sends info about the bot", func(c Context, _ []string) {
+		e := &discordgo.MessageEmbed{
+			Title:       "Mu2",
+			Description: "Info",
+			Fields: []*discordgo.MessageEmbedField{
+				&discordgo.MessageEmbedField{
+					Name:  "Author",
+					Value: "Friso van der Veen",
+				},
+				&discordgo.MessageEmbedField{
+					Name:  "Server count",
+					Value: strconv.Itoa(len(c.Session().State.Guilds)),
+				},
+				&discordgo.MessageEmbedField{
+					Name:  "Invite link",
+					Value: fmt.Sprintf("https://discordapp.com/oauth2/authorize?client_id=%s&scope=bot", c.Session().State.User.ID),
+				},
+				&discordgo.MessageEmbedField{
+					Name:  "Github",
+					Value: "https://github.com/fvdveen/mu2",
+				},
+			},
+		}
+
+		if err := c.SendEmbed(e); err != nil {
+			logrus.WithFields(map[string]interface{}{"type": "command", "command": "help"}).Errorf("Send embed: %v", err)
+			return
 		}
 	})
 }
@@ -93,50 +134,91 @@ func dbCommand(i *db.Item) Command {
 	return NewCommand("", "", func(c Context, _ []string) {
 		if err := c.Send(i.Response); err != nil {
 			logrus.WithFields(map[string]interface{}{
+				"type":    "command",
 				"command": "_learnable",
 				"item":    i.Message,
 				"guildID": i.GuildID,
 			}).Errorf("Send message: %v", err)
+			return
 		}
 	})
 }
 
-func (b *Bot) learnCommands() []Command {
+func (b *bot) learnCommands() []Command {
 	return []Command{
 		NewCommand("learn", "Teach a message-response command to the bot", func(c Context, args []string) {
-			g, err := c.Guild()
-			if err != nil {
-				logrus.WithField("command", "learn").Errorf("Get guild: %v", err)
+			switch args[0] {
+			case "learn", "unlearn", "help", "info":
+				if err := c.Send("Very funny..."); err != nil {
+					logrus.WithFields(map[string]interface{}{"type": "command", "command": "unlearn"}).Errorf("Send message: %v", err)
+					return
+				}
+				return
 			}
 
-			_, err = b.db.Get(g.ID, args[0])
+			g, err := c.Guild()
+			if err != nil {
+				logrus.WithFields(map[string]interface{}{"type": "command", "command": "learn"}).Errorf("Get guild: %v", err)
+				return
+			}
+
+			_, err = c.Database().Get(g.ID, args[0])
 			if err != nil && err != db.ErrItemNotFound {
-				logrus.WithField("command", "learn").Errorf("Get item: %v", err)
+				logrus.WithFields(map[string]interface{}{"type": "command", "command": "learn"}).Errorf("Get item: %v", err)
 				return
 			} else if err == nil {
 				if err := c.Send("haha, no"); err != nil {
-					logrus.WithField("command", "learn").Errorf("Send message: %v", "haha, no")
+					logrus.WithFields(map[string]interface{}{"type": "command", "command": "learn"}).Errorf("Send message: %v", "haha, no")
 					return
 				}
+				return
 			}
 
-			err = b.db.New(&db.Item{
+			err = c.Database().New(&db.Item{
 				Message:  args[0],
 				Response: strings.Join(args[1:], " "),
 				GuildID:  g.ID,
 			})
 			if err != nil {
-				logrus.WithField("command", "learn").Errorf("Store item: %v", err)
+				logrus.WithFields(map[string]interface{}{"type": "command", "command": "learn"}).Errorf("Store item: %v", err)
+				return
 			}
 
 			if err := c.Send(fmt.Sprintf("Learned %s succesfully", args[0])); err != nil {
-				logrus.WithField("command", "learn").Errorf("Send message: %v", err)
+				logrus.WithFields(map[string]interface{}{"type": "command", "command": "learn"}).Errorf("Send message: %v", err)
+				return
+			}
+		}),
+		NewCommand("unlearn", "Unlearn a message-response command", func(c Context, args []string) {
+			switch args[0] {
+			case "learn", "unlearn", "help", "info":
+				if err := c.Send("Very funny..."); err != nil {
+					logrus.WithFields(map[string]interface{}{"type": "command", "command": "unlearn"}).Errorf("Send message: %v", err)
+					return
+				}
+				return
+			}
+
+			g, err := c.Guild()
+			if err != nil {
+				logrus.WithFields(map[string]interface{}{"type": "command", "command": "unlearn"}).Errorf("Get guild: %v", err)
+				return
+			}
+
+			if err := c.Database().Remove(g.ID, args[0]); err != nil {
+				logrus.WithFields(map[string]interface{}{"type": "command", "command": "unlearn"}).Errorf("Get guild: %v", err)
+				return
+			}
+
+			if err := c.Send(fmt.Sprintf("Unlearned %s succesfully", args[0])); err != nil {
+				logrus.WithFields(map[string]interface{}{"type": "command", "command": "unlearn"}).Errorf("Send message: %v", err)
+				return
 			}
 		}),
 	}
 }
 
-func (b *Bot) dbCommand(s *discordgo.Session, m *discordgo.MessageCreate, msg string) (Command, error) {
+func (b *bot) dbCommand(s *discordgo.Session, m *discordgo.MessageCreate, msg string) (Command, error) {
 	ch, err := s.State.Channel(m.ChannelID)
 	if err != nil {
 		ch, err = s.Channel(m.ChannelID)

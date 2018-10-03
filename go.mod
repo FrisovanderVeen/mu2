@@ -4,9 +4,14 @@ require (
 	github.com/bwmarrin/discordgo v0.18.0
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gorilla/websocket v1.3.0
+	github.com/hashicorp/consul v1.2.3
+	github.com/hashicorp/go-cleanhttp v0.5.0 // indirect
+	github.com/hashicorp/go-rootcerts v0.0.0-20160503143440-6bb64b370b90 // indirect
 	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce
+	github.com/hashicorp/serf v0.8.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/kz/discordrus v1.1.1
+	github.com/lib/pq v1.0.0
 	github.com/magiconair/properties v1.8.0
 	github.com/mitchellh/mapstructure v1.0.0
 	github.com/pelletier/go-toml v1.2.0

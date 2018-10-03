@@ -5,12 +5,14 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 
-	"github.com/fvdveen/mu2/bot"
-	"github.com/fvdveen/mu2/commands"
-	"github.com/fvdveen/mu2/config"
-	"github.com/fvdveen/mu2/db"
+	"github.com/fvdveen/mu2/config/consul"
+	"github.com/fvdveen/mu2/config/events"
+	"github.com/fvdveen/mu2/log"
+	"github.com/fvdveen/mu2/watch"
+	"github.com/hashicorp/consul/api"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -23,44 +25,69 @@ import (
 )
 
 var (
-	cfgFile string
-	conf    config.Config
+	logLvl string
+	conf   struct {
+		Consul struct {
+			Address string `mapstructure:"address"`
+		} `mapstructure:"consul"`
+		Log struct {
+			Level string `mapstructure:"level"`
+		} `mapstructure:"log"`
+	}
 )
 
 // rootCmd represents the base command
 var rootCmd = &cobra.Command{
 	Use:   "mu2",
 	Short: "A discord music bot",
-	Long: `Mu2 is a discord music bot.
-
-To configure the bot either use environment variables or use a config file.`,
+	Long:  `Mu2 is a discord music bot.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		store, err := db.Get(conf.Database)
+		logrus.WithField("type", "main").Debug("Starting mu2...")
+
+		cc := api.DefaultConfig()
+		if conf.Consul.Address != "" {
+			cc.Address = conf.Consul.Address
+		}
+
+		c, err := api.NewClient(cc)
 		if err != nil {
-			return fmt.Errorf("create db: %v", err)
+			return fmt.Errorf("create consul client: %v", err)
 		}
 
-		b, err := bot.New(bot.WithConfig(conf.Discord), bot.WithDB(store))
+		p, err := consul.NewProvider(c, "bot/config", "json", nil)
 		if err != nil {
-			return fmt.Errorf("create bot: %v", err)
+			return fmt.Errorf("create provider: %v", err)
 		}
+		ch := p.Watch()
+		logrus.WithField("type", "main").Debug("Created config provider")
+		b, l, db := events.Split(events.Watch(ch))
 
-		if err := b.AddCommand(commands.All()...); err != nil {
-			return fmt.Errorf("add commands: %v", err)
-		}
+		var wg sync.WaitGroup
+		wg.Add(3)
 
-		if err := b.Open(); err != nil {
-			return fmt.Errorf("open session: %v", err)
-		}
+		ld := watch.Log(logrus.StandardLogger(), l, &wg)
+		logrus.WithField("type", "main").Debug("Created log watcher")
+
+		s, dbd := watch.DB(db, &wg)
+		logrus.WithField("type", "main").Debug("Created db watcher")
+
+		check := make(chan interface{})
+		bd, _ := watch.Bot(b, check, s, &wg)
+		logrus.WithField("type", "main").Debug("Created bot watcher")
+
+		wg.Wait()
+		logrus.WithField("type", "main").Debug("Created watchers")
 
 		sc := make(chan os.Signal, 1)
 		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-		logrus.Info("Bot is now running press CRTL-C to exit")
-		<-sc
+		logrus.WithField("type", "main").Info("Bot is now running press CRTL-C to exit")
 
-		if err := b.Close(); err != nil {
-			return fmt.Errorf("close session: %v", err)
-		}
+		<-sc
+		logrus.WithField("type", "main").Info("Shutting down...")
+		p.Close()
+		<-ld
+		<-dbd
+		<-bd
 		return nil
 	},
 	SilenceUsage: true,
@@ -77,39 +104,15 @@ func init() {
 
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file location")
+	rootCmd.PersistentFlags().StringVar(&conf.Log.Level, "log-level", "", "log level")
+	rootCmd.PersistentFlags().StringVar(&conf.Consul.Address, "consul-addr", "", "consul address")
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-
-		// If a config file is found, read it in.
-		if err := viper.ReadInConfig(); err != nil {
-			logrus.Errorf("Reading in config: %v", err)
-		}
-	}
-
 	defaults := map[string]interface{}{
 		"log": map[string]interface{}{
-			"level": "",
-			"discord": map[string]interface{}{
-				"level":   "",
-				"webhook": "",
-			},
-		},
-		"discord": map[string]interface{}{
-			"token":  "",
-			"prefix": "$",
-		},
-		"database": map[string]interface{}{
-			"host":     "",
-			"user":     "",
-			"password": "",
-			"ssl":      "",
-			"type":     "postgres",
+			"level": logLvl,
 		},
 	}
 
@@ -125,10 +128,19 @@ func initConfig() {
 	}
 
 	if err := viper.Unmarshal(&conf); err != nil {
-		logrus.Fatalf("Unmarshalling config: %v", err)
+		logrus.WithField("type", "main").Fatalf("Unmarshalling config: %v", err)
 		return
 	}
 
-	loadLogger(conf.Log, logrus.StandardLogger())
-	logrus.Debugf("Using config file: %s", viper.ConfigFileUsed())
+	var lvl logrus.Level
+
+	if conf.Log.Level != "" {
+		lvl = log.GetLevel(conf.Log.Level)
+	} else if viper.IsSet("log.level") {
+		lvl = log.GetLevel(viper.GetString("log.level"))
+	} else {
+		lvl = logrus.InfoLevel
+	}
+
+	logrus.SetLevel(lvl)
 }

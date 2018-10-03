@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/fvdveen/mu2/db"
 )
 
 // Context holds items used by commands
@@ -15,17 +16,17 @@ type Context interface {
 	Guild() (*discordgo.Guild, error)
 	MessageCreate() *discordgo.MessageCreate
 	Session() *discordgo.Session
-	Bot() *Bot
+	Bot() *bot
+	Database() db.Service
 }
 
 type defaultContext struct {
 	m *discordgo.MessageCreate
 	s *discordgo.Session
-	b *Bot
+	b *bot
 }
 
 func (ctx defaultContext) Send(s string) error {
-	fmt.Println(s)
 	_, err := ctx.s.ChannelMessageSend(ctx.m.ChannelID, s)
 	return err
 }
@@ -72,6 +73,10 @@ func (ctx defaultContext) Channel() (*discordgo.Channel, error) {
 	return c, nil
 }
 
-func (ctx defaultContext) Bot() *Bot {
+func (ctx defaultContext) Bot() *bot {
 	return ctx.b
+}
+
+func (ctx defaultContext) Database() db.Service {
+	return ctx.b.db
 }

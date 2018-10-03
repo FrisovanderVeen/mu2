@@ -2,6 +2,7 @@
 .gitignore
 .travis.yml
 .env
+config.json
 LICENSE
 mu2
 mu2.exe

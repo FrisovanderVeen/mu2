@@ -10,27 +10,46 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Bot is a discord bot
+type Bot interface {
+	// Open the session
+	Open() error
+	// Close the session
+	Close() error
+	AddCommand(...Command) error
+	Command(string) (Command, error)
+	Commands() []Command
+	RemoveCommand(string) error
+	SetPrefix(string) error
+	Prefix() string
+	SetToken(string) error
+	// Check if the bot is alive
+	Ping() error
+}
+
 // OptionFunc sets an option in the bot
-type OptionFunc func(*Bot)
+type OptionFunc func(*bot)
 
 // WithConfig sets the bots config
-func WithConfig(conf config.Discord) OptionFunc {
-	return func(b *Bot) {
+func WithConfig(conf config.Bot) OptionFunc {
+	return func(b *bot) {
 		b.conf = conf
 	}
 }
 
 // WithDB sets the bots db
 func WithDB(db db.Service) OptionFunc {
-	return func(b *Bot) {
+	return func(b *bot) {
 		b.db = db
 	}
 }
 
-// Bot is a discord bot
-type Bot struct {
-	sess *discordgo.Session
-	conf config.Discord
+// bot implements Bot
+type bot struct {
+	sess   *discordgo.Session
+	sessMu sync.RWMutex
+	conf   config.Bot
+	confMu sync.RWMutex
 
 	db db.Service
 
@@ -39,8 +58,8 @@ type Bot struct {
 }
 
 // New creates a bot
-func New(ops ...OptionFunc) (*Bot, error) {
-	b := &Bot{
+func New(ops ...OptionFunc) (Bot, error) {
+	b := &bot{
 		commands: make(map[string]Command),
 	}
 
@@ -48,7 +67,7 @@ func New(ops ...OptionFunc) (*Bot, error) {
 		o(b)
 	}
 
-	sess, err := discordgo.New("Bot " + b.conf.Token)
+	sess, err := discordgo.New("Bot " + b.conf.Discord.Token)
 	if err != nil {
 		return nil, fmt.Errorf("opening discord session: %v", err)
 	}
@@ -56,21 +75,44 @@ func New(ops ...OptionFunc) (*Bot, error) {
 
 	b.init()
 
+	b.AddCommand(b.HelpCommand())
+	b.AddCommand(b.learnCommands()...)
+	b.AddCommand(b.InfoCommand())
+
 	return b, nil
 }
 
+func (b *bot) init() {
+	b.sess.AddHandler(b.commandHandler())
+	b.sess.AddHandler(b.readyHandler())
+}
+
+func (b *bot) readyHandler() func(*discordgo.Session, *discordgo.Ready) {
+	return func(s *discordgo.Session, _ *discordgo.Ready) {
+		b.confMu.RLock()
+		defer b.confMu.RUnlock()
+		if err := s.UpdateStatus(0, fmt.Sprintf("%shelp", b.conf.Prefix)); err != nil {
+			logrus.WithFields(map[string]interface{}{"type": "handler", "handler": "ready"}).Errorf("Update status: %v", err)
+		}
+	}
+}
+
 // Open opens the session
-func (b *Bot) Open() error {
+func (b *bot) Open() error {
+	b.sessMu.RLock()
+	defer b.sessMu.RUnlock()
 	return b.sess.Open()
 }
 
 // Close closes the session
-func (b *Bot) Close() error {
+func (b *bot) Close() error {
+	b.sessMu.RLock()
+	defer b.sessMu.RUnlock()
 	return b.sess.Close()
 }
 
 // AddCommand adds a command to the bot
-func (b *Bot) AddCommand(cs ...Command) error {
+func (b *bot) AddCommand(cs ...Command) error {
 	b.commu.Lock()
 	defer b.commu.Unlock()
 
@@ -85,7 +127,7 @@ func (b *Bot) AddCommand(cs ...Command) error {
 }
 
 // Command returns the command with the given trigger
-func (b *Bot) Command(n string) (Command, error) {
+func (b *bot) Command(n string) (Command, error) {
 	b.commu.RLock()
 	defer b.commu.RUnlock()
 
@@ -98,7 +140,7 @@ func (b *Bot) Command(n string) (Command, error) {
 }
 
 // Commands returns all commands
-func (b *Bot) Commands() []Command {
+func (b *bot) Commands() []Command {
 	b.commu.RLock()
 	defer b.commu.RUnlock()
 
@@ -110,18 +152,68 @@ func (b *Bot) Commands() []Command {
 	return cs
 }
 
-func (b *Bot) readyHandler() func(*discordgo.Session, *discordgo.Ready) {
-	return func(s *discordgo.Session, _ *discordgo.Ready) {
-		if err := s.UpdateStatus(0, fmt.Sprintf("%shelp", b.conf.Prefix)); err != nil {
-			logrus.WithField("handler", "ready").Errorf("Update status: %v", err)
-		}
+func (b *bot) RemoveCommand(n string) error {
+	switch n {
+	case "learn", "help", "unlearn", "info":
+		return fmt.Errorf("cant unlearn default command: %s", n)
 	}
+
+	b.commu.Lock()
+	defer b.commu.Unlock()
+
+	delete(b.commands, n)
+	return nil
 }
 
-func (b *Bot) init() {
-	b.sess.AddHandler(b.commandHandler())
-	b.sess.AddHandler(b.readyHandler())
+func (b *bot) Ping() error {
+	b.sessMu.RLock()
+	_, err := b.sess.User(b.sess.State.User.ID)
+	b.sessMu.RUnlock()
+	return err
+}
 
-	b.AddCommand(b.HelpCommand())
-	b.AddCommand(b.learnCommands()...)
+func (b *bot) SetPrefix(p string) error {
+	b.sessMu.RLock()
+	if err := b.sess.UpdateStatus(0, fmt.Sprintf("%shelp", p)); err != nil {
+		return err
+	}
+	b.sessMu.RUnlock()
+
+	b.confMu.Lock()
+	b.conf.Prefix = p
+	b.confMu.Unlock()
+
+	return nil
+}
+
+func (b *bot) Prefix() string {
+	b.confMu.Lock()
+	defer b.confMu.Unlock()
+	return b.conf.Prefix
+}
+
+func (b *bot) SetToken(t string) error {
+	b.sessMu.Lock()
+	defer b.sessMu.Unlock()
+	if err := b.sess.Close(); err != nil {
+		return fmt.Errorf("close session: %v", err)
+	}
+
+	b.confMu.Lock()
+	b.conf.Discord.Token = t
+	b.confMu.Unlock()
+
+	sess, err := discordgo.New("Bot " + b.conf.Discord.Token)
+	if err != nil {
+		return fmt.Errorf("opening discord session: %v", err)
+	}
+	b.sess = sess
+
+	b.init()
+
+	if err := b.sess.Open(); err != nil {
+		return fmt.Errorf("open session: %v", err)
+	}
+
+	return nil
 }
