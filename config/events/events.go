@@ -9,13 +9,18 @@ import (
 )
 
 const (
+	// Change is the EventType for a change
 	Change EventType = iota
+	// Add is the EventType for a addition
 	Add
+	// Remove is the EventType for a removal
 	Remove
 )
 
+// EventType is the type of change that happend in a event
 type EventType uint8
 
+// Event represents a change in the config
 type Event struct {
 	// EventType shows what happened
 	EventType EventType

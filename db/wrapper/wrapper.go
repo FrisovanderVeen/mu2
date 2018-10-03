@@ -7,6 +7,7 @@ import (
 	"github.com/fvdveen/mu2/db"
 )
 
+// Service represents a wrapper around a db.Service
 type Service interface {
 	db.Service
 	// SetService sets the underlying service it will return a non-nil error if the given Service is nil

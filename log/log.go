@@ -4,7 +4,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/fvdveen/mu2/config"
 	"github.com/kz/discordrus"
 	"github.com/sirupsen/logrus"
 )
@@ -18,6 +17,8 @@ type Hook interface {
 	SetLevel(logrus.Level)
 }
 
+// GetLevel returns the logrus level from the given string
+// It returns logrus.InfoLevel if the string was unrecognised
 func GetLevel(lvl string) logrus.Level {
 	switch lvl {
 	case "debug":
@@ -38,19 +39,7 @@ func GetLevel(lvl string) logrus.Level {
 	}
 }
 
-func LoadLogger(conf config.Log, log *logrus.Logger) {
-	lvl := GetLevel(conf.Level)
-	if lvl == logrus.DebugLevel+1 {
-		logrus.Warnf("Unknown log level: %v using info instead", lvl)
-		lvl = logrus.InfoLevel
-	}
-	log.SetLevel(lvl)
-
-	if conf.Discord.WebHook != "" {
-
-	}
-}
-
+// DiscordHook creates a new logrus discord hook
 func DiscordHook(lvl, url string) logrus.Hook {
 	return discordrus.NewHook(
 		url,
@@ -69,6 +58,7 @@ func DiscordHook(lvl, url string) logrus.Hook {
 	)
 }
 
+// NewHookWrapper creates a new hook wrapper
 func NewHookWrapper(h logrus.Hook) Hook {
 	return &hook{
 		h:   h,

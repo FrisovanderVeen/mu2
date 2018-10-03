@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Provider struct {
+type provider struct {
 	client *api.Client
 	key    string
 	typ    string
@@ -25,8 +25,9 @@ type Provider struct {
 	quitWatchChan chan interface{}
 }
 
-func NewProvider(c *api.Client, key string, t string, qopts *api.QueryOptions) (*Provider, error) {
-	p := &Provider{
+// NewProvider creates a new provider with a consul backend
+func NewProvider(c *api.Client, key string, t string, qopts *api.QueryOptions) (config.Provider, error) {
+	p := &provider{
 		client:        c,
 		key:           key,
 		typ:           t,
@@ -37,7 +38,7 @@ func NewProvider(c *api.Client, key string, t string, qopts *api.QueryOptions) (
 		ch:            make(chan *config.Config),
 	}
 
-	go func(p *Provider) {
+	go func(p *provider) {
 		logrus.WithFields(map[string]interface{}{"type": "provider", "provider": "consul"}).Debugf("Starting...")
 		var last string
 		t := time.Tick(time.Second * 5)
@@ -85,7 +86,7 @@ func NewProvider(c *api.Client, key string, t string, qopts *api.QueryOptions) (
 		}
 	}(p)
 
-	go func(p *Provider) {
+	go func(p *provider) {
 		<-p.quitChan
 		p.quitWatchChan <- 0
 	}(p)
@@ -94,11 +95,12 @@ func NewProvider(c *api.Client, key string, t string, qopts *api.QueryOptions) (
 }
 
 // Watch watches consul for an update at the given key and then sends the updated value over the channel
-func (p *Provider) Watch() <-chan *config.Config {
+func (p *provider) Watch() <-chan *config.Config {
 	return p.ch
 }
 
-func (p *Provider) Close() error {
+// Close closes the provider
+func (p *provider) Close() error {
 	p.quitChan <- 0
 	return nil
 }

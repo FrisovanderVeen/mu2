@@ -11,6 +11,7 @@ type Config struct {
 	Database Database `mapstructure:"database" json:"database"`
 }
 
+// Bot holds all config values for the bot
 type Bot struct {
 	Discord  Discord  `mapstructure:"discord" json:"discord"`
 	Prefix   string   `mapstructure:"prefix" json:"prefix"`
@@ -41,10 +42,12 @@ type Database struct {
 	Type     string `mapstructure:"type" json:"type"`
 }
 
+// Watcher represents a stream of configs
 type Watcher interface {
 	Watch() <-chan *Config
 }
 
+// Provider represents a provider of configs
 type Provider interface {
 	Watcher
 	io.Closer
