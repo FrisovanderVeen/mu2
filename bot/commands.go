@@ -104,19 +104,19 @@ func (b *bot) InfoCommand() Command {
 			Title:       "Mu2",
 			Description: "Info",
 			Fields: []*discordgo.MessageEmbedField{
-				&discordgo.MessageEmbedField{
+				{
 					Name:  "Author",
 					Value: "Friso van der Veen",
 				},
-				&discordgo.MessageEmbedField{
+				{
 					Name:  "Server count",
 					Value: strconv.Itoa(len(c.Session().State.Guilds)),
 				},
-				&discordgo.MessageEmbedField{
+				{
 					Name:  "Invite link",
 					Value: fmt.Sprintf("https://discordapp.com/oauth2/authorize?client_id=%s&scope=bot", c.Session().State.User.ID),
 				},
-				&discordgo.MessageEmbedField{
+				{
 					Name:  "Github",
 					Value: "https://github.com/fvdveen/mu2",
 				},
