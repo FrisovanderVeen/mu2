@@ -6,8 +6,7 @@ import (
 )
 
 func main() {
-	err := cmd.Execute()
-	if err != nil {
-		logrus.Fatal(err)
+	if err := cmd.Execute(); err != nil {
+		logrus.WithField("type", "main").Fatal(err)
 	}
 }

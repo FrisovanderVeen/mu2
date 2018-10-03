@@ -1,6 +1,7 @@
 mu2
 mu2.exe
 
-config.yaml
-config.toml
+.env
 config.json
+mu2.yml
+data/**/*
