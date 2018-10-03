@@ -17,7 +17,7 @@ const (
 	Remove
 )
 
-// EventType is the type of change that happend in a event
+// EventType is the type of change that happened in a event
 type EventType uint8
 
 // Event represents a change in the config

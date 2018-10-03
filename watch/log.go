@@ -35,7 +35,7 @@ func Log(l *logrus.Logger, ch <-chan *events.Event, wg *sync.WaitGroup) <-chan i
 				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "log"}).Debugf("Set discord hook and level to: %s, %s", evnt.Log.Discord.WebHook, evnt.Log.Discord.Level)
 				done = true
 			default:
-				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "log"}).Warnf("Unkown event key: %s", evnt.Key)
+				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "log"}).Warnf("Unkonwn event key: %s", evnt.Key)
 			}
 		}
 		for evnt := range ch {
@@ -47,7 +47,7 @@ func Log(l *logrus.Logger, ch <-chan *events.Event, wg *sync.WaitGroup) <-chan i
 				h = log.NewHookWrapper(log.DiscordHook(evnt.Log.Discord.Level, evnt.Log.Discord.WebHook))
 				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "log"}).Debugf("Set discord hook and level to: %s, %s", evnt.Log.Discord.WebHook, evnt.Log.Discord.Level)
 			default:
-				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "log"}).Warnf("Unkown event key: %s", evnt.Key)
+				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "log"}).Warnf("Unknown event key: %s", evnt.Key)
 			}
 		}
 

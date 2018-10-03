@@ -184,7 +184,7 @@ func (b *bot) learnCommands() []Command {
 				return
 			}
 
-			if err := c.Send(fmt.Sprintf("Learned %s succesfully", args[0])); err != nil {
+			if err := c.Send(fmt.Sprintf("Learned %s successfully", args[0])); err != nil {
 				logrus.WithFields(map[string]interface{}{"type": "command", "command": "learn"}).Errorf("Send message: %v", err)
 				return
 			}
@@ -210,7 +210,7 @@ func (b *bot) learnCommands() []Command {
 				return
 			}
 
-			if err := c.Send(fmt.Sprintf("Unlearned %s succesfully", args[0])); err != nil {
+			if err := c.Send(fmt.Sprintf("Unlearned %s successfully", args[0])); err != nil {
 				logrus.WithFields(map[string]interface{}{"type": "command", "command": "unlearn"}).Errorf("Send message: %v", err)
 				return
 			}

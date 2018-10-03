@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Hook is a wrapper around a logrus hook with interchangable hook
+// Hook is a wrapper around a logrus hook with interchangeable hook
 type Hook interface {
 	logrus.Hook
 	// SetHook wil return a non-nil error if the hook is nil

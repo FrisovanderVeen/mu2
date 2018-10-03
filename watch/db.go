@@ -19,7 +19,7 @@ func DB(ch <-chan *events.Event, wg *sync.WaitGroup) (wrapper.Service, <-chan in
 	for !done {
 		evnt := <-ch
 		if evnt.Key != "database" {
-			logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "db"}).Warnf("Unkown event key: %s", evnt.Key)
+			logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "db"}).Warnf("Unknown event key: %s", evnt.Key)
 			continue
 		}
 		srv, err := db.Get(evnt.Database)
@@ -38,7 +38,7 @@ func DB(ch <-chan *events.Event, wg *sync.WaitGroup) (wrapper.Service, <-chan in
 	go func(s wrapper.Service, ch <-chan *events.Event, d chan<- interface{}) {
 		for evnt := range ch {
 			if evnt.Key != "database" {
-				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "db"}).Warnf("Unkown event key: %s", evnt.Key)
+				logrus.WithFields(map[string]interface{}{"type": "watcher", "watcher": "db"}).Warnf("Unknown event key: %s", evnt.Key)
 				continue
 			}
 			srv, err := db.Get(evnt.Database)
