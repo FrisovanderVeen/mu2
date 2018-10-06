@@ -8,8 +8,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/fvdveen/mu2/config/consul"
-	"github.com/fvdveen/mu2/config/events"
+	"github.com/fvdveen/mu2-config/consul"
+	"github.com/fvdveen/mu2-config/events"
 	"github.com/fvdveen/mu2/log"
 	"github.com/fvdveen/mu2/watch"
 	"github.com/hashicorp/consul/api"
@@ -33,6 +33,10 @@ var (
 		Log struct {
 			Level string `mapstructure:"level"`
 		} `mapstructure:"log"`
+		Config struct {
+			Path string `mapstructure:"path"`
+			Type string `mapstructure:"type"`
+		} `mapstructure:"config"`
 	}
 )
 
@@ -54,13 +58,16 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("create consul client: %v", err)
 		}
 
-		p, err := consul.NewProvider(c, "bot/config", "json", nil)
+		p, err := consul.NewProvider(c, conf.Config.Path, conf.Config.Type, nil)
 		if err != nil {
 			return fmt.Errorf("create provider: %v", err)
 		}
-		ch := p.Watch()
+		ch := events.Watch(p.Watch())
 		logrus.WithField("type", "main").Debug("Created config provider")
-		b, l, db := events.Split(events.Watch(ch))
+		b, ch := events.Bot(ch)
+		l, ch := events.Log(ch)
+		db, ch := events.Database(ch)
+		events.Null(ch)
 
 		var wg sync.WaitGroup
 		wg.Add(3)
@@ -106,6 +113,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&conf.Log.Level, "log-level", "", "log level")
 	rootCmd.PersistentFlags().StringVar(&conf.Consul.Address, "consul-addr", "", "consul address")
+	rootCmd.PersistentFlags().StringVar(&conf.Config.Path, "config-path", "bot/config", "config path on the kv store")
+	rootCmd.PersistentFlags().StringVar(&conf.Config.Type, "config-type", "json", "config type on the kv store")
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -3,7 +3,7 @@ package memory
 import (
 	"sync"
 
-	"github.com/fvdveen/mu2/config"
+	"github.com/fvdveen/mu2-config"
 	"github.com/fvdveen/mu2/db"
 )
 
