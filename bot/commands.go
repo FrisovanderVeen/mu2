@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"context"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/fvdveen/mu2/db"
@@ -47,6 +48,7 @@ func (b *bot) commandHandler() func(s *discordgo.Session, m *discordgo.MessageCr
 			s: s,
 			m: m,
 			b: b,
+			ctx: context.Background(),
 		}
 
 		c.Run(ctx, msg[1:])

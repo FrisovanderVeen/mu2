@@ -9,12 +9,15 @@ import (
 	"syscall"
 
 	"github.com/fvdveen/mu2-config/consul"
+	"github.com/fvdveen/mu2/commands"
 	"github.com/fvdveen/mu2-config/events"
 	"github.com/fvdveen/mu2/log"
 	"github.com/fvdveen/mu2/watch"
 	"github.com/hashicorp/consul/api"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/fvdveen/mu2/services/search"
+	"github.com/fvdveen/mu2/commands/play"
 	"github.com/spf13/viper"
 
 	// register all commands
@@ -62,24 +65,33 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("create provider: %v", err)
 		}
-		ch := events.Watch(p.Watch())
+
+		var ch, b, l, db, ssch <-chan *events.Event
+
+		ch = events.Watch(p.Watch())
 		logrus.WithField("type", "main").Debug("Created config provider")
-		b, ch := events.Bot(ch)
-		l, ch := events.Log(ch)
-		db, ch := events.Database(ch)
+		b, ch = events.Bot(ch)
+		l, ch = events.Log(ch)
+		db, ch = events.Database(ch)
+		ssch, ch = events.SearchService(ch)
 		events.Null(ch)
 
 		var wg sync.WaitGroup
-		wg.Add(3)
-
+		
+		wg.Add(1)
 		ld := watch.Log(logrus.StandardLogger(), l, &wg)
 		logrus.WithField("type", "main").Debug("Created log watcher")
-
+		
+		wg.Add(1)
 		s, dbd := watch.DB(db, &wg)
 		logrus.WithField("type", "main").Debug("Created db watcher")
 
+		ss, ssd := watch.SearchService(ssch, cc)
+		go addCommands(ss)
+
+		wg.Add(1)
 		check := make(chan interface{})
-		bd, _ := watch.Bot(b, check, s, &wg)
+		bd, _ := watch.Bot(b, check, s, &wg) 
 		logrus.WithField("type", "main").Debug("Created bot watcher")
 
 		wg.Wait()
@@ -95,6 +107,7 @@ var rootCmd = &cobra.Command{
 		<-ld
 		<-dbd
 		<-bd
+		<-ssd
 		return nil
 	},
 	SilenceUsage: true,
@@ -152,4 +165,9 @@ func initConfig() {
 	}
 
 	logrus.SetLevel(lvl)
+}
+
+func addCommands(ss search.Service) {
+	pc := play.New(ss)
+	commands.Register(pc)
 }

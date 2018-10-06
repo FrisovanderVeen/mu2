@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"context"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/fvdveen/mu2/db"
@@ -18,12 +19,14 @@ type Context interface {
 	Session() *discordgo.Session
 	Bot() *bot
 	Database() db.Service
+	Context() context.Context
 }
 
 type defaultContext struct {
 	m *discordgo.MessageCreate
 	s *discordgo.Session
 	b *bot
+	ctx context.Context
 }
 
 func (ctx defaultContext) Send(s string) error {
@@ -79,4 +82,8 @@ func (ctx defaultContext) Bot() *bot {
 
 func (ctx defaultContext) Database() db.Service {
 	return ctx.b.db
+}
+
+func (ctx defaultContext) Context() context.Context {
+	return ctx.ctx
 }
