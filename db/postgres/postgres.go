@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/fvdveen/mu2/config"
+	"github.com/fvdveen/mu2-config"
 	"github.com/fvdveen/mu2/db"
 
 	// Register the postgres driver
