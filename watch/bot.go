@@ -52,9 +52,9 @@ func Bot(ch <-chan *events.Event, ping <-chan interface{}, s db.Service, wg *syn
 				}
 				updatePrefix = false
 			case "bot.commands":
-				logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Updating commands")
 				switch evnt.EventType {
 				case events.Change:
+					logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Updating commands")
 					for _, c := range evnt.Removals {
 						if err := b.RemoveCommand(c); err != nil {
 							logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Errorf("Remove command: %v", err)
@@ -72,6 +72,7 @@ func Bot(ch <-chan *events.Event, ping <-chan interface{}, s db.Service, wg *syn
 						}
 					}
 				case events.Remove:
+					logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Removing commands")
 					for _, c := range evnt.Removals {
 						if err := b.RemoveCommand(c); err != nil {
 							logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Errorf("Remove command: %v", err)
@@ -79,6 +80,7 @@ func Bot(ch <-chan *events.Event, ping <-chan interface{}, s db.Service, wg *syn
 						}
 					}
 				case events.Add:
+					logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Adding commands")
 					for _, cmd := range evnt.Additions {
 						c, err := commands.Get(cmd)
 						if err != nil {
@@ -157,9 +159,9 @@ func getBot(ch <-chan *events.Event, s db.Service) bot.Bot {
 			logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Changing prefix")
 			prefix = evnt.Change
 		case "bot.commands":
-			logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Updating commands")
 			switch evnt.EventType {
 			case events.Change:
+				logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Updating commands")
 				for _, c := range evnt.Removals {
 					delete(cmds, c)
 				}
@@ -167,10 +169,12 @@ func getBot(ch <-chan *events.Event, s db.Service) bot.Bot {
 					cmds[c] = true
 				}
 			case events.Remove:
+				logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Removing commands")
 				for _, c := range evnt.Removals {
 					delete(cmds, c)
 				}
 			case events.Add:
+				logrus.WithFields(map[string]interface{}{"type": "watch", "watch": "bot"}).Debugf("Adding commands")
 				for _, c := range evnt.Additions {
 					cmds[c] = true
 				}
