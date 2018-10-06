@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/fvdveen/mu2/config"
+	"github.com/fvdveen/mu2-config"
 	"github.com/fvdveen/mu2/db"
 	"github.com/sirupsen/logrus"
 )

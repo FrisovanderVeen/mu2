@@ -3,7 +3,7 @@ package watch
 import (
 	"sync"
 
-	"github.com/fvdveen/mu2/config/events"
+	"github.com/fvdveen/mu2-config/events"
 	"github.com/fvdveen/mu2/log"
 	"github.com/sirupsen/logrus"
 )

@@ -3,7 +3,7 @@ package db
 import (
 	"errors"
 
-	"github.com/fvdveen/mu2/config"
+	"github.com/fvdveen/mu2-config"
 )
 
 var fs = make(map[string]Factory)
