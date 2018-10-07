@@ -9,6 +9,7 @@ import (
 	"github.com/micro/go-micro"
 	"github.com/micro/go-micro/client"
 	"github.com/micro/go-micro/registry/consul"
+	"github.com/micro/go-micro/transport"
 )
 
 // Service searches youtube and returns a Video
@@ -25,7 +26,7 @@ type Video struct {
 }
 
 type service struct {
-	s searchpb.SearchService
+	s    searchpb.SearchService
 	opts []client.CallOption
 }
 
@@ -33,12 +34,17 @@ type service struct {
 func NewService(loc string, cc *api.Config, opts ...client.CallOption) Service {
 	srv := grpc.NewService(
 		micro.Registry(consul.NewRegistry(consul.Config(cc))),
+		micro.Transport(
+			transport.NewTransport(
+				transport.Secure(true),
+			),
+		),
 	)
-	
+
 	s := searchpb.NewSearchService(loc, srv.Client())
-	
+
 	return &service{
-		s: s,
+		s:    s,
 		opts: opts,
 	}
 }

@@ -1,10 +1,10 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
-	"context"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/fvdveen/mu2/db"
@@ -45,9 +45,9 @@ func (b *bot) commandHandler() func(s *discordgo.Session, m *discordgo.MessageCr
 		}
 
 		ctx := &defaultContext{
-			s: s,
-			m: m,
-			b: b,
+			s:   s,
+			m:   m,
+			b:   b,
 			ctx: context.Background(),
 		}
 

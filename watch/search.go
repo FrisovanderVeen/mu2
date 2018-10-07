@@ -2,13 +2,13 @@ package watch
 
 import (
 	"sync"
-	
-	"github.com/fvdveen/mu2/services/search/wrapper"
-	"github.com/fvdveen/mu2/services/search"
+
 	"github.com/fvdveen/mu2-config/events"
+	"github.com/fvdveen/mu2/services/search"
+	"github.com/fvdveen/mu2/services/search/wrapper"
 	"github.com/hashicorp/consul/api"
-	"github.com/sirupsen/logrus"
 	"github.com/micro/go-micro/client"
+	"github.com/sirupsen/logrus"
 )
 
 // SearchService watcher ch for search service events and applies them to the returned service
