@@ -2,7 +2,7 @@ package bot
 
 import (
 	"fmt"
-	"io"
+	"sync"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/fvdveen/mu2/services/search"
@@ -23,30 +23,54 @@ type video struct {
 	v   *search.Video
 	or  OpusReader
 	ctx Context
+	mu sync.RWMutex
 
+	opus []*frame
 	done bool
+	i int
+	len int
 }
+
+type frame struct{
+	o []byte
+	err error
+}
+
 
 // NewVideo creates a new video
 func NewVideo(v *search.Video, or OpusReader, ctx Context) Video {
-	return &video{
+	vid := &video{
 		v:   v,
 		or:  or,
 		ctx: ctx,
 	}
+
+	go vid.stream()
+
+	return vid
 }
 
 func (v *video) OpusFrame() ([]byte, error) {
-	if v.done {
-		return nil, io.EOF
+	var f *frame
+
+	for {
+		v.mu.RLock()
+		if v.i < len(v.opus) {
+			v.mu.RUnlock()
+			break
+		}
+		v.mu.RUnlock()
 	}
 
-	o, err := v.or.OpusFrame()
-	if err == io.EOF {
-		v.done = true
+	v.mu.RLock()
+	f = v.opus[v.i]
+	v.i++
+	if v.done && v.i >= len(v.opus) {
+		v.i = 0
 	}
+	v.mu.RUnlock()
 
-	return o, err
+	return f.o, f.err
 }
 
 func (v *video) Author() string {
@@ -58,6 +82,7 @@ func (v *video) Name() string {
 }
 
 func (v *video) ResetPlayback() {
+	v.i = 0
 }
 
 func (v *video) Announce() error {
@@ -69,4 +94,21 @@ func (v *video) Announce() error {
 	}
 
 	return v.ctx.SendEmbed(e)
+}
+
+func (v *video) stream() {
+	for {
+		o, err := v.or.OpusFrame()
+		v.mu.Lock()
+		v.opus = append(v.opus, &frame{
+			o: o,
+			err: err,
+		})
+		v.len++
+		v.mu.Unlock()
+		if err != nil {
+			v.done = true
+			return
+		}
+	}
 }
