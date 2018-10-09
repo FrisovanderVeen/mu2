@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// ErrVoiceStateNotFound is used when a voice state is not found
 	ErrVoiceStateNotFound = errors.New("voice state not found")
 )
 

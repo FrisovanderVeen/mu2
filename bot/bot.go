@@ -208,8 +208,8 @@ func (b *bot) SetToken(t string) error {
 
 	b.voiceMu.Lock()
 	defer b.voiceMu.Unlock()
-	for gID, _ := range b.voiceHandlers {
-		// vh.Stop()
+	for gID, vh := range b.voiceHandlers {
+		vh.Stop()
 
 		delete(b.voiceHandlers, gID)
 	}
