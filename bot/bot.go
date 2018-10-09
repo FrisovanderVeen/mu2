@@ -16,13 +16,19 @@ type Bot interface {
 	Open() error
 	// Close the session
 	Close() error
+
 	AddCommand(...Command) error
 	Command(string) (Command, error)
 	Commands() []Command
 	RemoveCommand(string) error
+
 	SetPrefix(string) error
 	Prefix() string
 	SetToken(string) error
+	// VoiceHandler will return a voice handler for the given guild
+	// If there isnt a voice handler it will create one with the given voice channel ID
+	VoiceHandler(string, string) (VoiceHandler, error)
+
 	// Check if the bot is alive
 	Ping() error
 }
@@ -55,12 +61,16 @@ type bot struct {
 
 	commu    sync.RWMutex
 	commands map[string]Command
+
+	voiceMu       sync.RWMutex
+	voiceHandlers map[string]VoiceHandler
 }
 
 // New creates a bot
 func New(ops ...OptionFunc) (Bot, error) {
 	b := &bot{
-		commands: make(map[string]Command),
+		commands:      make(map[string]Command),
+		voiceHandlers: make(map[string]VoiceHandler),
 	}
 
 	for _, o := range ops {
@@ -195,6 +205,15 @@ func (b *bot) Prefix() string {
 func (b *bot) SetToken(t string) error {
 	b.sessMu.Lock()
 	defer b.sessMu.Unlock()
+
+	b.voiceMu.Lock()
+	defer b.voiceMu.Unlock()
+	for gID, _ := range b.voiceHandlers {
+		// vh.Stop()
+
+		delete(b.voiceHandlers, gID)
+	}
+
 	if err := b.sess.Close(); err != nil {
 		return fmt.Errorf("close session: %v", err)
 	}

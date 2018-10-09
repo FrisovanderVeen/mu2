@@ -44,12 +44,7 @@ func (b *bot) commandHandler() func(s *discordgo.Session, m *discordgo.MessageCr
 			}
 		}
 
-		ctx := &defaultContext{
-			s:   s,
-			m:   m,
-			b:   b,
-			ctx: context.Background(),
-		}
+		ctx := b.NewContext(context.Background(), m, s)
 
 		c.Run(ctx, msg[1:])
 	}

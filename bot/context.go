@@ -2,11 +2,15 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/fvdveen/mu2/db"
+)
+
+var (
+	ErrVoiceStateNotFound = errors.New("voice state not found")
 )
 
 // Context holds items used by commands
@@ -14,15 +18,26 @@ type Context interface {
 	Send(string) error
 	SendEmbed(*discordgo.MessageEmbed) error
 
-	Play(OpusReader) error
+	Play(Video) error
+	VoiceHandler() (VoiceHandler, error)
 
 	Channel() (*discordgo.Channel, error)
 	Guild() (*discordgo.Guild, error)
 	MessageCreate() *discordgo.MessageCreate
 	Session() *discordgo.Session
-	Bot() *bot
+	Bot() Bot
 	Database() db.Service
 	Context() context.Context
+}
+
+// NewContext creates a new Context
+func (b *bot) NewContext(ctx context.Context, m *discordgo.MessageCreate, s *discordgo.Session) Context {
+	return &defaultContext{
+		s:   s,
+		m:   m,
+		b:   b,
+		ctx: ctx,
+	}
 }
 
 type defaultContext struct {
@@ -79,7 +94,7 @@ func (ctx *defaultContext) Channel() (*discordgo.Channel, error) {
 	return c, nil
 }
 
-func (ctx *defaultContext) Bot() *bot {
+func (ctx *defaultContext) Bot() Bot {
 	return ctx.b
 }
 
@@ -91,46 +106,38 @@ func (ctx *defaultContext) Context() context.Context {
 	return ctx.ctx
 }
 
-func (ctx *defaultContext) Play(or OpusReader) error {
-	g, err := ctx.Guild()
-	if err != nil {
-		return fmt.Errorf("get guild: %v", err)
+func (ctx *defaultContext) Play(v Video) error {
+	vh, err := ctx.VoiceHandler()
+	if err == ErrVoiceStateNotFound {
+		return ErrVoiceStateNotFound
+	} else if err != nil {
+		return fmt.Errorf("get voice handler: %v", err)
 	}
 
-	for _, vs := range g.VoiceStates {
+	vh.Play(v)
+	return nil
+}
+
+func (ctx *defaultContext) VoiceHandler() (VoiceHandler, error) {
+	g, err := ctx.Guild()
+	if err != nil {
+		return nil, fmt.Errorf("get guild: %v", err)
+	}
+
+	var vs *discordgo.VoiceState
+	var found = false
+
+	for _, vs = range g.VoiceStates {
 		if vs.UserID == ctx.m.Author.ID {
-			vc, err := ctx.s.ChannelVoiceJoin(g.ID, vs.ChannelID, false, true)
-			if err != nil {
-				return fmt.Errorf("join voice channel: %v", err)
-			}
+			found = true
 
-			if err := vc.Speaking(true); err != nil {
-				return fmt.Errorf("set speaking status: %v", err)
-			}
-
-			for {
-				o, err := or.OpusFrame()
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					if err := vc.Speaking(false); err != nil {
-						return fmt.Errorf("set speaking status: %v", err)
-					}
-					return fmt.Errorf("read opus frame: %v", err)
-				}
-
-				vc.OpusSend <- o
-			}
-
-			if err := vc.Speaking(false); err != nil {
-				return fmt.Errorf("set speaking status: %v", err)
-			}
-
-			if err := vc.Disconnect(); err != nil {
-				return fmt.Errorf("disconnect from voice channel: %v", err)
-			}
+			break
 		}
 	}
 
-	return nil
+	if !found {
+		return nil, ErrVoiceStateNotFound
+	}
+
+	return ctx.b.VoiceHandler(g.ID, vs.ChannelID)
 }

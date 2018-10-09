@@ -23,6 +23,7 @@ type Video struct {
 	Name         string
 	URL          string
 	ThumbnailURL string
+	Author       string
 }
 
 type service struct {
@@ -62,6 +63,7 @@ func (s *service) Search(ctx context.Context, n string) (*Video, error) {
 		Name:         res.Video.Name,
 		URL:          res.Video.Url,
 		ThumbnailURL: res.Video.Thumbnail,
+		Author:       res.Video.Author,
 	}
 
 	return v, nil
