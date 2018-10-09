@@ -23,19 +23,18 @@ type video struct {
 	v   *search.Video
 	or  OpusReader
 	ctx Context
-	mu sync.RWMutex
+	mu  sync.RWMutex
 
 	opus []*frame
 	done bool
-	i int
-	len int
+	i    int
+	len  int
 }
 
-type frame struct{
-	o []byte
+type frame struct {
+	o   []byte
 	err error
 }
-
 
 // NewVideo creates a new video
 func NewVideo(v *search.Video, or OpusReader, ctx Context) Video {
@@ -101,7 +100,7 @@ func (v *video) stream() {
 		o, err := v.or.OpusFrame()
 		v.mu.Lock()
 		v.opus = append(v.opus, &frame{
-			o: o,
+			o:   o,
 			err: err,
 		})
 		v.len++
