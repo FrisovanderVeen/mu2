@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/fvdveen/mu2-config/consul"
 	"github.com/fvdveen/mu2-config/events"
@@ -41,6 +45,9 @@ var (
 			Path string `mapstructure:"path"`
 			Type string `mapstructure:"type"`
 		} `mapstructure:"config"`
+		Health struct {
+			Port string `mapstructure:"port"`
+		} `mapstructure:"health"`
 	}
 )
 
@@ -94,8 +101,27 @@ var rootCmd = &cobra.Command{
 
 		wg.Add(1)
 		check := make(chan interface{})
-		bd, _ := watch.Bot(b, check, s, &wg)
+		bd, errs := watch.Bot(b, check, s, &wg)
 		logrus.WithField("type", "main").Debug("Created bot watcher")
+
+		srv := &http.Server{
+			Addr:              fmt.Sprintf(":%s", conf.Health.Port),
+			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       5 * time.Second,
+			WriteTimeout:      5 * time.Second,
+			IdleTimeout:       5 * time.Second,
+			Handler:           healthCheck(check, errs),
+		}
+
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logrus.WithField("type", "main").Errorf("Close server: %v", err)
+			}
+		}()
+
+		if err := register(c.Agent()); err != nil {
+			return fmt.Errorf("register service: %v", err)
+		}
 
 		wg.Wait()
 		logrus.WithField("type", "main").Debug("Created watchers")
@@ -107,6 +133,12 @@ var rootCmd = &cobra.Command{
 		<-sc
 		logrus.WithField("type", "main").Info("Shutting down...")
 		p.Close()
+		if err := deregister(c.Agent()); err != nil {
+			logrus.WithField("type", "main").Errorf("Deregister service: %v", err)
+		}
+		if err := srv.Shutdown(context.Background()); err != nil {
+			logrus.WithField("type", "main").Errorf("Close server: %v", err)
+		}
 		<-ld
 		<-dbd
 		<-bd
@@ -132,6 +164,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&conf.Consul.Address, "consul-addr", "", "consul address")
 	rootCmd.PersistentFlags().StringVar(&conf.Config.Path, "config-path", "bot/config", "config path on the kv store")
 	rootCmd.PersistentFlags().StringVar(&conf.Config.Type, "config-type", "json", "config type on the kv store")
+	rootCmd.PersistentFlags().StringVar(&conf.Health.Port, "health-port", "8080", "port for healthcheck server")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -174,4 +207,60 @@ func initConfig() {
 func addCommands(ss search.Service, es encode.Service) {
 	pc := play.New(ss, es)
 	commands.Register(pc)
+}
+
+func healthCheck(check chan<- interface{}, res <-chan error) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		check <- 0
+		w.Header().Set("content-type", "text/plain")
+		select {
+		case err := <-res:
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			} else {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, "All OK")
+			}
+		case <-r.Context().Done():
+			http.Error(w, r.Context().Err().Error(), http.StatusRequestTimeout)
+		}
+	})
+}
+
+func register(a *api.Agent) error {
+	h, err := os.Hostname()
+	if err != nil {
+		return fmt.Errorf("get hostname: %v", err)
+	}
+
+	p, err := strconv.Atoi(conf.Health.Port)
+	if err != nil {
+		return fmt.Errorf("get port: %v", err)
+	}
+
+	reg := &api.AgentServiceRegistration{
+		ID:      "mu2",
+		Name:    "mu2",
+		Address: h,
+		Port:    p,
+		Check: &api.AgentServiceCheck{
+			HTTP:     fmt.Sprintf("http://%s:%v/healthcheck", h, conf.Health.Port),
+			Interval: "5s",
+			Timeout:  "3s",
+		},
+	}
+
+	if err = a.ServiceRegister(reg); err != nil {
+		return fmt.Errorf("register service: %v", err)
+	}
+
+	return nil
+}
+
+func deregister(a *api.Agent) error {
+	if err := a.ServiceDeregister("mu2"); err != nil {
+		return err
+	}
+
+	return nil
 }
