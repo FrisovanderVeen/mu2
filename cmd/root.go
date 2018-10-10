@@ -211,7 +211,12 @@ func addCommands(ss search.Service, es encode.Service) {
 
 func healthCheck(check chan<- interface{}, res <-chan error) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		check <- 0
+		select {
+		case check <- 0:
+		case <-r.Context().Done():
+			http.Error(w, r.Context().Err().Error(), http.StatusRequestTimeout)
+			return
+		}
 		w.Header().Set("content-type", "text/plain")
 		select {
 		case err := <-res:
