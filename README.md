@@ -10,4 +10,4 @@ Mu2 is another discord music bot. It automatically updates to changes in the con
 
 ## Running
 
-For instructions on how to run Mu2 go to [Mu2-deploy](https://github.com/fvdveen/mu2-depoloy).
+For instructions on how to run Mu2 go to [Mu2-deploy](https://github.com/fvdveen/mu2-deploy).
