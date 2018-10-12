@@ -35,7 +35,11 @@ var _ = commands.Register(bot.NewCommand("queue", "queue displays the current qu
 		msg = fmt.Sprintf("%s\n%d. %s - %s", msg, i+1, v.Name(), v.Author())
 	}
 
-	msg = fmt.Sprintf("`%s`", msg)
+	if msg == "" {
+		msg = fmt.Sprintf("Queue is empty use `%splay` to add songs", ctx.Bot().Prefix())
+	} else {
+		msg = fmt.Sprintf("`%s`", msg)
+	}
 
 	if err := ctx.Send(msg); err != nil {
 		logrus.WithFields(map[string]interface{}{"type": "command", "command": "queue"}).Errorf("Send embed: %v", err)
