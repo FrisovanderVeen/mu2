@@ -27,6 +27,7 @@ type Bot interface {
 	SetToken(string) error
 	// VoiceHandler will return a voice handler for the given guild
 	// If there isnt a voice handler it will create one with the given voice channel ID
+	// If the channel ID is empty and there is no bot playing in the given guild it will return ErrVoiceStateNotFound
 	VoiceHandler(string, string) (VoiceHandler, error)
 
 	// Check if the bot is alive

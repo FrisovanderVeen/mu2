@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	eventResume voiceEvent = iota
+	eventResume voiceEventType = iota
 	eventPause
 	eventLoop
 	eventRepeat
@@ -18,7 +18,12 @@ const (
 	eventStop
 )
 
-type voiceEvent uint8
+type voiceEventType uint8
+
+type voiceEvent struct {
+	ret chan bool
+	typ voiceEventType
+}
 
 // OpusReader returns an opus frame and an error
 type OpusReader interface {
@@ -28,12 +33,12 @@ type OpusReader interface {
 // VoiceHandler is a wrapper around a voice connection
 type VoiceHandler interface {
 	Play(Video)
-	Pause()
-	Resume()
-	Skip()
-	Stop()
-	Loop()
-	Repeat()
+	Pause() bool
+	Resume() bool
+	Skip() bool
+	Stop() bool
+	Loop() bool
+	Repeat() bool
 	Queue() []Video
 	Reorder(int, int) error
 	Remove(int) error
@@ -46,7 +51,7 @@ type voiceHandler struct {
 	mCID string
 
 	q      *queue
-	events chan voiceEvent
+	events chan *voiceEvent
 
 	pause, loop, repeat, stop bool
 }
@@ -67,7 +72,7 @@ func (b *bot) newVoiceHandler(gID string, cID string) (VoiceHandler, error) {
 		c:      c,
 		q:      newQueue(),
 		b:      b,
-		events: make(chan voiceEvent),
+		events: make(chan *voiceEvent),
 	}
 
 	go v.run()
@@ -187,85 +192,151 @@ func (vh *voiceHandler) playItem(v Video) error {
 	}
 }
 
-func (vh *voiceHandler) handleEvent(evnt voiceEvent) bool {
-	switch evnt {
+func (vh *voiceHandler) handleEvent(evnt *voiceEvent) bool {
+	switch evnt.typ {
 	case eventStop:
 		vh.stop = true
+		go func() {
+			evnt.ret <- true
+		}()
 		return true
 	case eventSkip:
+		go func() {
+			evnt.ret <- true
+		}()
 		return true
 	case eventPause:
+		go func() {
+			evnt.ret <- true
+		}()
 		skip := vh.paused()
 		if skip {
 			return true
 		}
 	case eventResume:
+		go func() {
+			evnt.ret <- true
+		}()
 	case eventLoop:
 		vh.loop = !vh.loop
+		go func() {
+			evnt.ret <- vh.loop
+		}()
 	case eventRepeat:
 		vh.repeat = !vh.repeat
+		go func() {
+			evnt.ret <- vh.repeat
+		}()
 	}
 	return false
 }
 
 func (vh *voiceHandler) paused() bool {
 	for evnt := range vh.events {
-		switch evnt {
+		switch evnt.typ {
 		case eventStop:
 			vh.stop = true
+			go func() {
+				evnt.ret <- true
+			}()
 			return true
 		case eventSkip:
+			go func() {
+				evnt.ret <- true
+			}()
 			return true
 		case eventPause:
+			go func() {
+				evnt.ret <- true
+			}()
 		case eventResume:
+			go func() {
+				evnt.ret <- true
+			}()
 			return false
 		case eventLoop:
 			vh.loop = !vh.loop
+			go func() {
+				evnt.ret <- vh.loop
+			}()
 		case eventRepeat:
 			vh.repeat = !vh.repeat
+			go func() {
+				evnt.ret <- vh.repeat
+			}()
 		}
 	}
 	return false
 }
 
-func (vh *voiceHandler) Pause() {
+func (vh *voiceHandler) Pause() bool {
+	ret := make(chan bool)
 	select {
-	case vh.events <- eventPause:
+	case vh.events <- &voiceEvent{
+		typ: eventPause,
+		ret: ret,
+	}:
 	case <-time.After(time.Second):
 	}
+	return <-ret
 }
 
-func (vh *voiceHandler) Resume() {
+func (vh *voiceHandler) Resume() bool {
+	ret := make(chan bool)
 	select {
-	case vh.events <- eventResume:
+	case vh.events <- &voiceEvent{
+		typ: eventResume,
+		ret: ret,
+	}:
 	case <-time.After(time.Second):
 	}
+	return <-ret
 }
 
-func (vh *voiceHandler) Skip() {
+func (vh *voiceHandler) Skip() bool {
+	ret := make(chan bool)
 	select {
-	case vh.events <- eventSkip:
+	case vh.events <- &voiceEvent{
+		typ: eventSkip,
+		ret: ret,
+	}:
 	case <-time.After(time.Second):
 	}
+	return <-ret
 }
 
-func (vh *voiceHandler) Stop() {
+func (vh *voiceHandler) Stop() bool {
+	ret := make(chan bool)
 	select {
-	case vh.events <- eventStop:
+	case vh.events <- &voiceEvent{
+		typ: eventStop,
+		ret: ret,
+	}:
 	case <-time.After(time.Second):
 	}
+	return <-ret
 }
 
-func (vh *voiceHandler) Loop() {
+func (vh *voiceHandler) Loop() bool {
+	ret := make(chan bool)
 	select {
-	case vh.events <- eventLoop:
+	case vh.events <- &voiceEvent{
+		typ: eventLoop,
+		ret: ret,
+	}:
 	case <-time.After(time.Second):
 	}
+	return <-ret
 }
 
-func (vh *voiceHandler) Repeat() {
+func (vh *voiceHandler) Repeat() bool {
+	ret := make(chan bool)
 	select {
-	case vh.events <- eventRepeat:
+	case vh.events <- &voiceEvent{
+		typ: eventRepeat,
+		ret: ret,
+	}:
 	case <-time.After(time.Second):
 	}
+	return <-ret
 }
