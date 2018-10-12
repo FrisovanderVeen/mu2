@@ -5,4 +5,6 @@ import (
 	_ "github.com/fvdveen/mu2/commands/pingpong"
 	// register the voice commands
 	_ "github.com/fvdveen/mu2/commands/voice"
+	// register the queue commands
+	_ "github.com/fvdveen/mu2/commands/queue"
 )
