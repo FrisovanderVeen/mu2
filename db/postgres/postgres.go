@@ -20,7 +20,7 @@ type postgres struct {
 // POSTGRES creates a new db.Service with a postgres backend
 func POSTGRES(conf config.Database) (db.Service, error) {
 	db := &postgres{}
-	connStr := fmt.Sprintf("user=%s password=%s host=%s sslmode=%s dbname=mu2 port=5432", conf.User, conf.Password, conf.Host, conf.SSL)
+	connStr := fmt.Sprintf("user=%s password=%s host=%s sslmode=%s dbname=mu2 port=%s", conf.User, conf.Password, conf.Host, conf.SSL, conf.Port)
 
 	sqlDb, err := sql.Open("postgres", connStr)
 	if err != nil {

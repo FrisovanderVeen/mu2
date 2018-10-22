@@ -13,6 +13,8 @@ github.com/fvdveen/mu2-config v0.0.0-20181006161558-710744936f70 h1:ICal8eoi4543
 github.com/fvdveen/mu2-config v0.0.0-20181006161558-710744936f70/go.mod h1:q+Ny/V9tMEToisWkjVF5tJSvClocZfXnFsYb7FPyb9U=
 github.com/fvdveen/mu2-config v0.0.0-20181007111149-cc5f2f6032bd h1:lT/p75z2cAbZT5xz9SxhOeU0sMY/MaddDGY3lNPbGlM=
 github.com/fvdveen/mu2-config v0.0.0-20181007111149-cc5f2f6032bd/go.mod h1:q+Ny/V9tMEToisWkjVF5tJSvClocZfXnFsYb7FPyb9U=
+github.com/fvdveen/mu2-config v0.0.0-20181022125119-ddad0fd0c6b1 h1:GVHMPsSUV6uYgWOPWHlj11BNQcD5HUQlDFbqAzVqRC8=
+github.com/fvdveen/mu2-config v0.0.0-20181022125119-ddad0fd0c6b1/go.mod h1:q+Ny/V9tMEToisWkjVF5tJSvClocZfXnFsYb7FPyb9U=
 github.com/fvdveen/mu2-proto v0.0.0-20181004164642-de82b520b6c4 h1:MT2j9jDZHXc0Rc2OigDIbGdrXQiI+LVyAoezezsVZEI=
 github.com/fvdveen/mu2-proto v0.0.0-20181004164642-de82b520b6c4/go.mod h1:vV3/EodQgy2mhSd9iEg0JIpJuauhDQNqFczNAuDjb8Y=
 github.com/fvdveen/mu2-proto v0.0.0-20181007132205-b5429bbec37e h1:Kx8xdxDlt3bL9y8ssNFGixEBZybgHk1jJO9jKNjHtCY=

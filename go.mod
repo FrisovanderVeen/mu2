@@ -2,7 +2,7 @@ module github.com/fvdveen/mu2
 
 require (
 	github.com/bwmarrin/discordgo v0.18.0
-	github.com/fvdveen/mu2-config v0.0.0-20181007111149-cc5f2f6032bd
+	github.com/fvdveen/mu2-config v0.0.0-20181022125119-ddad0fd0c6b1
 	github.com/fvdveen/mu2-proto v0.0.0-20181007132205-b5429bbec37e
 	github.com/go-log/log v0.1.0 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
