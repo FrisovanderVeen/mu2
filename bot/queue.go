@@ -2,146 +2,170 @@ package bot
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
-var (
-	// errOutOfBounds is used when an given index is out of bounds
-	errOutOfBounds = errors.New("index out of queue bounds")
-)
+// ErrOutOfBounds is used when a queue index is out of bounds
+var ErrOutOfBounds = errors.New("queue index out of bounds")
 
-// queue is a FIFO (first in, first out) queue data structure
 type queue struct {
+	front *queueItem
+
 	mu sync.RWMutex
-
-	is []Video
 }
 
-// newQueue creates a new queue
-func newQueue() *queue {
-	q := &queue{
-		is: make([]Video, 0),
+type queueItem struct {
+	next *queueItem
+	item VoiceItem
+}
+
+func (q *queue) Add(vi VoiceItem) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	qi := &queueItem{
+		next: nil,
+		item: vi,
 	}
-	return q
+
+	if q.front == nil {
+		q.front = qi
+		return
+	}
+
+	x := q.front
+	for x.next != nil {
+		x = x.next
+	}
+
+	x.next = qi
 }
 
-// Length returns the length of the queue
-func (q *queue) Length() int {
+func (q *queue) Next() VoiceItem {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.front == nil {
+		return nil
+	}
+	qi := q.front
+	q.front = q.front.next
+	return qi.item
+}
+
+// len is not thread safe
+func (q *queue) len() int {
+	len := 0
+
+	for qi := q.front; qi != nil; qi = qi.next {
+		len++
+	}
+
+	return len
+}
+
+func (q *queue) Len() int {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	return len(q.is)
+	return q.len()
 }
 
-// Back returns the last element of the queue
-func (q *queue) Back() Video {
+// index assumes that i is in the queue
+// checks have to be done before calling
+// index is not thread safe
+func (q *queue) index(i int) *queueItem {
+	qi := q.front
+	for x := 0; x < i; x++ {
+		qi = qi.next
+	}
+
+	return qi
+}
+
+func (q *queue) Index(i int) *queueItem {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	if len(q.is) == 0 {
-		return nil
-	}
-
-	return q.is[len(q.is)-1]
+	return q.index(i)
 }
 
-// PushBack adds the elements to the back of the queue
-func (q *queue) PushBack(i ...Video) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.is = append(q.is, i...)
-}
-
-// PopBack returns the last element of the queue and removes it
-func (q *queue) PopBack() Video {
-	q.mu.RLock()
-	if len(q.is) == 0 {
-		q.mu.RUnlock()
-		return nil
-	}
-	q.mu.RUnlock()
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	l := len(q.is) - 1
-	i := q.is[l]
-	q.is = q.is[:l]
-	return i
-}
-
-// Front returns the first element of the queue
-func (q *queue) Front() Video {
+func (q *queue) List() []VoiceItem {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	if len(q.is) == 0 {
-		return nil
+
+	list := []VoiceItem{}
+
+	for qi := q.front; qi != nil; qi = qi.next {
+		list = append(list, qi.item)
 	}
 
-	return q.is[0]
+	return list
 }
 
-// PushFront adds the elements to the front of the queue
-func (q *queue) PushFront(i ...Video) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.is = append(i, q.is...)
-}
-
-// PopFront returns the first element of the queue and removes it
-func (q *queue) PopFront() Video {
-	q.mu.RLock()
-	if len(q.is) == 0 {
-		q.mu.RUnlock()
-		return nil
-	}
-	q.mu.RUnlock()
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	i := q.is[0]
-	q.is = q.is[1:]
-	return i
-}
-
-// Reorder puts element a at elements b position in the queue
+// Reorder will put item a at the position of item b
+// item b wil be moved behind a
 func (q *queue) Reorder(a, b int) error {
-	q.mu.RLock()
-	if a < 0 || b < 0 || a > len(q.is)-1 || b > len(q.is)-1 {
-		q.mu.RUnlock()
-		return errOutOfBounds
-	}
-	if a == b {
-		q.mu.RUnlock()
-		return nil
-	}
-	q.mu.RUnlock()
-
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if a == b {
+		return nil
+	}
+	len := q.len()
+	if a > len-1 || a < 0 {
+		return fmt.Errorf("%w: %d", ErrOutOfBounds, a)
+	} else if b > len-1 || b < 0 {
+		return fmt.Errorf("%w: %d", ErrOutOfBounds, b)
+	}
 
-	i := q.is[a]
-	q.is = append(q.is[:a], q.is[a+1:]...)
-	q.is = append(q.is[:b], append([]Video{i}, q.is[b:]...)...)
+	if a > b {
+		x := q.index(a - 1)
+		temp := x.next
+		x.next = x.next.next
+		x = temp
+
+		y := q.index(b - 1)
+		x.next = y.next
+		y.next = x
+		return nil
+	}
+
+	y := q.index(b)
+
+	x := q.index(a - 1)
+	temp := x.next
+	x.next = x.next.next
+	x = temp
+
+	x.next = y.next
+	y.next = x
 
 	return nil
 }
 
-// Copy returns a copy of the queue at that time
-func (q *queue) Copy() []Video {
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	x := make([]Video, q.Length())
-	copy(x, q.is)
-	return x
-}
-
-// Remove removes the item at index i in the queue
 func (q *queue) Remove(i int) error {
-	q.mu.RLock()
-	if i < 0 || i > len(q.is)-1 {
-		q.mu.RUnlock()
-		return errOutOfBounds
-	}
-	q.mu.RUnlock()
-
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	q.is = append(q.is[:i], q.is[i+1:]...)
+	if i < 0 {
+		return fmt.Errorf("%w: %d", ErrOutOfBounds, i)
+	}
+	len := q.len()
+	if i > len-1 {
+		return fmt.Errorf("%w: %d", ErrOutOfBounds, i)
+	}
+
+	if i == 0 {
+		q.front = q.front.next
+		return nil
+	}
+
+	if i == len-1 {
+		qi := q.index(i - 1)
+		qi.next = nil
+
+		return nil
+	}
+
+	qi := q.index(i)
+
+	qi.next = qi.next.next
+
 	return nil
 }

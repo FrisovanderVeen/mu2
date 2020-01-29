@@ -1,35 +1,18 @@
 module github.com/fvdveen/mu2
 
 require (
-	github.com/bwmarrin/discordgo v0.18.0
-	github.com/fvdveen/mu2-config v0.0.0-20181022125119-ddad0fd0c6b1
-	github.com/fvdveen/mu2-proto v0.0.0-20181007132205-b5429bbec37e
-	github.com/go-log/log v0.1.0 // indirect
-	github.com/gorilla/websocket v1.4.0 // indirect
-	github.com/hashicorp/consul v1.2.3
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/json-iterator/go v1.1.5 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
-	github.com/kz/discordrus v1.1.1
-	github.com/lib/pq v1.0.0
-	github.com/micro/cli v0.0.0-20180830071301-8b9d33ec2f19 // indirect
-	github.com/micro/go-grpc v0.3.0
-	github.com/micro/go-log v0.0.0-20170512141327-cbfa9447f9b6 // indirect
-	github.com/micro/go-micro v0.11.0
-	github.com/micro/go-plugins v0.14.0 // indirect
-	github.com/micro/go-rcache v0.0.0-20180418165751-a581a57b5133 // indirect
-	github.com/micro/grpc-go v0.0.0-20180913204047-2c703400301b // indirect
-	github.com/micro/mdns v0.0.0-20160929165650-cdf30746f9f7 // indirect
-	github.com/micro/util v0.0.0-20180417104657-4b7ed83e8520 // indirect
-	github.com/miekg/dns v1.0.12 // indirect
-	github.com/mitchellh/hashstructure v1.0.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
-	github.com/pborman/uuid v1.2.0 // indirect
-	github.com/pkg/errors v0.8.0 // indirect
-	github.com/sirupsen/logrus v1.1.0
-	github.com/spf13/cobra v0.0.3
-	github.com/spf13/viper v1.2.1
-	golang.org/x/net v0.0.0-20181003013248-f5e5bdd77824 // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	github.com/PuerkitoBio/goquery v1.5.0 // indirect
+	github.com/bwmarrin/discordgo v0.20.1
+	github.com/gorilla/websocket v1.4.1 // indirect
+	github.com/hashicorp/go-multierror v1.0.0
+	github.com/jonas747/dca v0.0.0-20190317094138-10e959e9d3e8
+	github.com/jonas747/ogg v0.0.0-20161220051205-b4f6f4cf3757 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
+	github.com/rylio/ytdl v0.6.2
+	github.com/sirupsen/logrus v1.4.2
+	golang.org/x/crypto v0.0.0-20191029031824-8986dd9e96cf // indirect
+	google.golang.org/api v0.13.0
+	layeh.com/gopus v0.0.0-20161224163843-0ebf989153aa
 )
+
+go 1.13

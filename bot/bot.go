@@ -2,238 +2,168 @@ package bot
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/fvdveen/mu2-config"
-	"github.com/fvdveen/mu2/db"
-	"github.com/sirupsen/logrus"
+	"github.com/fvdveen/mu2/common"
+	"github.com/fvdveen/mu2/config"
 )
 
+var whiteSpaceRegex = regexp.MustCompile(`\s+`)
+
 // Bot is a discord bot
-type Bot interface {
-	// Open the session
-	Open() error
-	// Close the session
-	Close() error
+type Bot struct {
+	session *discordgo.Session
+	conf    config.Config
 
-	AddCommand(...Command) error
-	Command(string) (Command, error)
-	Commands() []Command
-	RemoveCommand(string) error
+	cogs map[string]Cog
 
-	SetPrefix(string) error
-	Prefix() string
-	SetToken(string) error
-	// VoiceHandler will return a voice handler for the given guild
-	// If there isnt a voice handler it will create one with the given voice channel ID
-	// If the channel ID is empty and there is no bot playing in the given guild it will return ErrVoiceStateNotFound
-	VoiceHandler(string, string) (VoiceHandler, error)
-
-	// Check if the bot is alive
-	Ping() error
+	voiceHandlers   map[string]*VoiceHandler
+	voiceHandlersMu sync.RWMutex
 }
 
-// OptionFunc sets an option in the bot
-type OptionFunc func(*bot)
+// OptionFunc is a option for the bot
+type OptionFunc func(*Bot)
 
-// WithConfig sets the bots config
-func WithConfig(conf config.Bot) OptionFunc {
-	return func(b *bot) {
+// WithConfig sets the config for the bot
+func WithConfig(conf config.Config) OptionFunc {
+	return func(b *Bot) {
 		b.conf = conf
 	}
 }
 
-// WithDB sets the bots db
-func WithDB(db db.Service) OptionFunc {
-	return func(b *bot) {
-		b.db = db
-	}
-}
-
-// bot implements Bot
-type bot struct {
-	sess   *discordgo.Session
-	sessMu sync.RWMutex
-	conf   config.Bot
-	confMu sync.RWMutex
-
-	db db.Service
-
-	commu    sync.RWMutex
-	commands map[string]Command
-
-	voiceMu       sync.RWMutex
-	voiceHandlers map[string]VoiceHandler
-}
-
-// New creates a bot
-func New(ops ...OptionFunc) (Bot, error) {
-	b := &bot{
-		commands:      make(map[string]Command),
-		voiceHandlers: make(map[string]VoiceHandler),
+// New creates a new bot
+func New(opts ...OptionFunc) (*Bot, error) {
+	b := &Bot{
+		cogs:          map[string]Cog{},
+		voiceHandlers: map[string]*VoiceHandler{},
 	}
 
-	for _, o := range ops {
-		o(b)
+	for _, opt := range opts {
+		opt(b)
 	}
 
-	sess, err := discordgo.New("Bot " + b.conf.Discord.Token)
+	var err error
+	b.session, err = discordgo.New("Bot " + b.conf.Bot.Token)
 	if err != nil {
-		return nil, fmt.Errorf("opening discord session: %v", err)
+		return nil, fmt.Errorf("create session: %v", err)
 	}
-	b.sess = sess
 
-	b.init()
+	b.initSession()
 
-	b.AddCommand(b.HelpCommand())
-	b.AddCommand(b.learnCommands()...)
-	b.AddCommand(b.InfoCommand())
+	b.initCogs()
 
 	return b, nil
 }
 
-func (b *bot) init() {
-	b.sess.AddHandler(b.commandHandler())
-	b.sess.AddHandler(b.readyHandler())
+// Open opens the discord connection
+func (b *Bot) Open() error {
+	return b.session.Open()
 }
 
-func (b *bot) readyHandler() func(*discordgo.Session, *discordgo.Ready) {
-	return func(s *discordgo.Session, _ *discordgo.Ready) {
-		b.confMu.RLock()
-		defer b.confMu.RUnlock()
-		if err := s.UpdateStatus(0, fmt.Sprintf("%shelp", b.conf.Prefix)); err != nil {
-			logrus.WithFields(map[string]interface{}{"type": "handler", "handler": "ready"}).Errorf("Update status: %v", err)
+// Close closes the discord connection and stops the bot
+func (b *Bot) Close() error {
+	return b.session.Close()
+}
+
+func (b *Bot) initSession() {
+	b.session.AddHandler(b.readyHandler())
+	b.session.AddHandler(b.messageHandler())
+}
+
+func (b *Bot) initCogs() {
+	b.cogs = cogs
+}
+
+func (b *Bot) getCommandContext(m *discordgo.MessageCreate) *Context {
+	ctx := &Context{
+		Bot:           b,
+		MessageCreate: m,
+		Session:       b.session,
+	}
+
+	ctx.Args = strings.Split(
+		strings.TrimPrefix(
+			whiteSpaceRegex.ReplaceAllString(m.Content, " "),
+			common.GetPrefix(),
+		),
+		" ",
+	)
+
+	return ctx
+}
+
+func (b *Bot) getRunFunc(cog Cog, args []string) (func(*Context, []string) error, []string) {
+	if len(args) == 0 {
+		return cog.RunFunc(), args
+	}
+
+	if subs := cog.SubCogs(); subs != nil {
+		if len(args) < 1 {
+			return cog.RunFunc(), args
+		}
+
+		sub := subs[args[0]]
+		if sub == nil {
+			return cog.RunFunc(), args
+		}
+
+		return b.getRunFunc(sub, args[1:])
+	}
+
+	return cog.RunFunc(), args
+}
+
+// Cog returns the cog for trigger com
+func (b *Bot) Cog(com string) (Cog, bool) {
+	c, ok := b.cogs[com]
+	return c, ok
+}
+
+// Cogs returns a list of all cogs
+func (b *Bot) Cogs() []Cog {
+	cogs := []Cog{}
+
+	for _, c := range b.cogs {
+		cogs = append(cogs, c)
+	}
+
+	return cogs
+}
+
+// CogsByCategory returns a list of all cogs with category cat
+func (b *Bot) CogsByCategory() map[*CogCategory][]Cog {
+	cogs := map[*CogCategory][]Cog{}
+
+	for _, c := range b.cogs {
+		cogs[c.CogCategory()] = append(cogs[c.CogCategory()], c)
+	}
+
+	return cogs
+}
+
+// CogsForCategory returns all cogs with category cat
+func (b *Bot) CogsForCategory(cat *CogCategory) []Cog {
+	cogs := []Cog{}
+
+	for _, cog := range b.cogs {
+		if cog.CogCategory() == cat {
+			cogs = append(cogs, cog)
 		}
 	}
+
+	return cogs
 }
 
-// Open opens the session
-func (b *bot) Open() error {
-	b.sessMu.RLock()
-	defer b.sessMu.RUnlock()
-	return b.sess.Open()
-}
-
-// Close closes the session
-func (b *bot) Close() error {
-	b.sessMu.RLock()
-	defer b.sessMu.RUnlock()
-	return b.sess.Close()
-}
-
-// AddCommand adds a command to the bot
-func (b *bot) AddCommand(cs ...Command) error {
-	b.commu.Lock()
-	defer b.commu.Unlock()
-
-	for _, c := range cs {
-		if _, ok := b.commands[c.Name()]; ok {
-			return fmt.Errorf("command registered twice: %s", c.Name())
+// CogByName returns the cog with name name
+func (b *Bot) CogByName(name string) (Cog, bool) {
+	for _, c := range b.cogs {
+		if c.Help().Name == name {
+			return c, true
 		}
-		b.commands[c.Name()] = c
 	}
 
-	return nil
-}
-
-// Command returns the command with the given trigger
-func (b *bot) Command(n string) (Command, error) {
-	b.commu.RLock()
-	defer b.commu.RUnlock()
-
-	c, ok := b.commands[n]
-	if !ok {
-		return nil, fmt.Errorf("command not found: %s", n)
-	}
-
-	return c, nil
-}
-
-// Commands returns all commands
-func (b *bot) Commands() []Command {
-	b.commu.RLock()
-	defer b.commu.RUnlock()
-
-	cs := []Command{}
-	for _, c := range b.commands {
-		cs = append(cs, c)
-	}
-
-	return cs
-}
-
-func (b *bot) RemoveCommand(n string) error {
-	switch n {
-	case "learn", "help", "unlearn", "info":
-		return fmt.Errorf("cant unlearn default command: %s", n)
-	}
-
-	b.commu.Lock()
-	defer b.commu.Unlock()
-
-	delete(b.commands, n)
-	return nil
-}
-
-func (b *bot) Ping() error {
-	b.sessMu.RLock()
-	_, err := b.sess.User(b.sess.State.User.ID)
-	b.sessMu.RUnlock()
-	return err
-}
-
-func (b *bot) SetPrefix(p string) error {
-	b.sessMu.RLock()
-	if err := b.sess.UpdateStatus(0, fmt.Sprintf("%shelp", p)); err != nil {
-		return err
-	}
-	b.sessMu.RUnlock()
-
-	b.confMu.Lock()
-	b.conf.Prefix = p
-	b.confMu.Unlock()
-
-	return nil
-}
-
-func (b *bot) Prefix() string {
-	b.confMu.Lock()
-	defer b.confMu.Unlock()
-	return b.conf.Prefix
-}
-
-func (b *bot) SetToken(t string) error {
-	b.sessMu.Lock()
-	defer b.sessMu.Unlock()
-
-	b.voiceMu.Lock()
-	defer b.voiceMu.Unlock()
-	for gID, vh := range b.voiceHandlers {
-		vh.Stop()
-
-		delete(b.voiceHandlers, gID)
-	}
-
-	if err := b.sess.Close(); err != nil {
-		return fmt.Errorf("close session: %v", err)
-	}
-
-	b.confMu.Lock()
-	b.conf.Discord.Token = t
-	b.confMu.Unlock()
-
-	sess, err := discordgo.New("Bot " + b.conf.Discord.Token)
-	if err != nil {
-		return fmt.Errorf("opening discord session: %v", err)
-	}
-	b.sess = sess
-
-	b.init()
-
-	if err := b.sess.Open(); err != nil {
-		return fmt.Errorf("open session: %v", err)
-	}
-
-	return nil
+	return nil, false
 }

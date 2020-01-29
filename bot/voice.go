@@ -1,342 +1,187 @@
 package bot
 
 import (
-	"fmt"
+	"errors"
 	"io"
-	"time"
+	"sync"
+
+	"github.com/fvdveen/mu2/common"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/sirupsen/logrus"
+	"github.com/hashicorp/go-multierror"
 )
 
-const (
-	eventResume voiceEventType = iota
-	eventPause
-	eventLoop
-	eventRepeat
-	eventSkip
-	eventStop
+var (
+	// ErrVoiceStateNotFound is returned when the voice state was not found
+	ErrVoiceStateNotFound = errors.New("voice state not found")
+	errStopPlaying        = errors.New("voice handler recieved stop signal")
 )
 
-type voiceEventType uint8
-
-type voiceEvent struct {
-	ret chan bool
-	typ voiceEventType
-}
-
-// OpusReader returns an opus frame and an error
-type OpusReader interface {
+type OpusPlayer interface {
 	OpusFrame() ([]byte, error)
 }
 
-// VoiceHandler is a wrapper around a voice connection
-type VoiceHandler interface {
-	Play(Video)
-	Pause() bool
-	Resume() bool
-	Skip() bool
-	Stop() bool
-	Loop() bool
-	Repeat() bool
-	Queue() []Video
-	Reorder(int, int) error
-	Remove(int) error
+type ResetOpusPlayer interface {
+	OpusPlayer
+	ResetPlayback()
 }
 
-type voiceHandler struct {
-	c *discordgo.VoiceConnection
-	b *bot
-
-	mCID string
-
-	q      *queue
-	events chan *voiceEvent
-
-	pause, loop, repeat, stop bool
+type VideoInfo interface {
+	Title() string
 }
 
-func (b *bot) newVoiceHandler(gID string, cID string) (VoiceHandler, error) {
-	if cID == "" {
-		return nil, fmt.Errorf("can't joinc empty channel")
-	}
+// VoiceItem is something that can be played over voice
+type VoiceItem interface {
+	ResetOpusPlayer
+	VideoInfo
+}
 
-	b.sessMu.RLock()
-	c, err := b.sess.ChannelVoiceJoin(gID, cID, false, true)
-	b.sessMu.RUnlock()
+// VoiceHandler handles voice connections for the bot
+type VoiceHandler struct {
+	bot *Bot
+
+	conn *discordgo.VoiceConnection
+
+	start sync.Once
+
+	queue *queue
+
+	curPlaying   VoiceItem
+	curPlayingMu sync.RWMutex
+
+	repeat bool
+}
+
+// GetVoiceState returns the voice state of the user who triggered the command
+func (ctx *Context) GetVoiceState() (*discordgo.VoiceState, error) {
+	g, err := ctx.Session.Guild(ctx.MessageCreate.GuildID)
 	if err != nil {
-		return nil, fmt.Errorf("join voice channel: %v", err)
+		return nil, err
 	}
 
-	v := &voiceHandler{
-		c:      c,
-		q:      newQueue(),
-		b:      b,
-		events: make(chan *voiceEvent),
+	for _, vs := range g.VoiceStates {
+		if vs.UserID == ctx.MessageCreate.Author.ID {
+			return vs, nil
+		}
 	}
-
-	go v.run()
-
-	return v, nil
+	return nil, ErrVoiceStateNotFound
 }
 
-func (b *bot) VoiceHandler(gID string, cID string) (VoiceHandler, error) {
-	var v VoiceHandler
-	var ok bool
-
-	b.voiceMu.Lock()
-	defer b.voiceMu.Unlock()
-	v, ok = b.voiceHandlers[gID]
+// GetVoiceHandler returns the voice handler for the guild of the user who triggered the command
+func (ctx *Context) GetVoiceHandler() (*VoiceHandler, error) {
+	ctx.Bot.voiceHandlersMu.RLock()
+	vh, ok := ctx.Bot.voiceHandlers[ctx.MessageCreate.GuildID]
+	ctx.Bot.voiceHandlersMu.RUnlock()
 	if !ok {
-		var err error
-		v, err = b.newVoiceHandler(gID, cID)
-		if err != nil {
-			return nil, err
+		ctx.Bot.voiceHandlersMu.Lock()
+		defer ctx.Bot.voiceHandlersMu.Unlock()
+
+		vh, ok = ctx.Bot.voiceHandlers[ctx.MessageCreate.GuildID]
+		if !ok {
+			vs, err := ctx.GetVoiceState()
+			if err != nil {
+				return nil, err
+			}
+			vh, err = ctx.Bot.newVoiceHandler(vs.GuildID, vs.ChannelID)
+			if err != nil {
+				return nil, err
+			}
 		}
+	}
+	return vh, nil
+}
 
-		b.voiceHandlers[gID] = v
+// newVoiceHandler creates a new voice handler
+// the caller has to lock voiceHandlerMu to prevent data races
+func (b *Bot) newVoiceHandler(guildID, channelID string) (*VoiceHandler, error) {
+	vc, err := b.session.ChannelVoiceJoin(guildID, channelID, false, true)
+	if err != nil {
+		return nil, err
 	}
 
-	return v, nil
-}
-
-func (vh *voiceHandler) Play(v Video) {
-	vh.q.PushBack(v)
-}
-
-func (vh *voiceHandler) Queue() []Video {
-	return vh.q.Copy()
-}
-
-func (vh *voiceHandler) Reorder(a int, b int) error {
-	return vh.q.Reorder(a, b)
-}
-
-func (vh *voiceHandler) Remove(i int) error {
-	return vh.q.Remove(i)
-}
-
-func (vh *voiceHandler) disconnect() {
-	if err := vh.c.Disconnect(); err != nil {
-		logrus.WithFields(map[string]interface{}{"type": "voice-handler", "guild": vh.c.GuildID}).Errorf("Close voice connection: %v", err)
+	if err := vc.Speaking(true); err != nil {
+		if erro := vc.Disconnect(); err != nil {
+			return nil, multierror.Append(err, erro)
+		}
+		return nil, err
 	}
 
-	vh.b.voiceMu.Lock()
-	delete(vh.b.voiceHandlers, vh.c.GuildID)
-	vh.b.voiceMu.Unlock()
+	vh := &VoiceHandler{
+		bot:   b,
+		conn:  vc,
+		queue: new(queue),
+	}
+
+	b.voiceHandlers[guildID] = vh
+
+	return vh, nil
 }
 
-func (vh *voiceHandler) run() {
-	var v Video
-	v = vh.first()
+func (vh *VoiceHandler) CurrentPlaying() VoiceItem {
+	vh.curPlayingMu.RLock()
+	vh.curPlayingMu.RUnlock()
+	return vh.curPlaying
+}
 
+// Play adds vi to the queue
+func (vh *VoiceHandler) Play(vi VoiceItem) {
+	vh.queue.Add(vi)
+	vh.start.Do(func() {
+		go vh.run()
+	})
+}
+
+func (vh *VoiceHandler) run() {
 	for {
-		if v == nil {
-			vh.disconnect()
-			return
+		if !vh.repeat {
+			vh.curPlayingMu.Lock()
+			vh.curPlaying = vh.queue.Next()
+			vh.curPlayingMu.Unlock()
+		} else {
+			vh.curPlayingMu.RLock()
+			vh.curPlaying.ResetPlayback()
+			vh.curPlayingMu.RUnlock()
 		}
 
-		if err := v.Announce(); err != nil {
-			logrus.WithFields(map[string]interface{}{"type": "voice-handler", "guild": vh.c.GuildID}).Errorf("Announce video: %v", err)
+		vh.curPlayingMu.Lock()
+		if vh.curPlaying == nil {
+			if err := vh.Close(); err != nil {
+				common.GetVoiceHandlerLogger(vh.conn).Errorf("close voice handler: %v", err)
+				break
+			}
+			break
 		}
+		vh.curPlayingMu.Unlock()
 
-		if err := vh.playItem(v); err != nil {
-			logrus.WithFields(map[string]interface{}{"type": "voice-handler", "guild": vh.c.GuildID}).Errorf("Play video: %v", err)
-		}
-
-		if vh.stop {
-			vh.disconnect()
-			return
-		} else if vh.repeat {
-			v.ResetPlayback()
-
-			vh.q.PushFront(v)
-		} else if vh.loop {
-			v.ResetPlayback()
-
-			vh.q.PushBack(v)
-		}
-
-		v = vh.q.PopFront()
-	}
-}
-
-func (vh *voiceHandler) first() Video {
-	for {
-		v := vh.q.Front()
-		if v != nil {
+		if err := vh.play(); err != nil && errors.Is(err, errStopPlaying) {
+			break
+		} else if err != nil {
+			common.GetVoiceHandlerLogger(vh.conn).Errorf("play voice item: %v", err)
 			break
 		}
 	}
-
-	return vh.q.PopFront()
 }
 
-func (vh *voiceHandler) playItem(v Video) error {
+func (vh *VoiceHandler) play() error {
+	vh.curPlayingMu.RLock()
+	defer vh.curPlayingMu.RUnlock()
+
 	for {
-		o, err := v.OpusFrame()
-		if err == io.EOF {
+		frame, err := vh.curPlaying.OpusFrame()
+		if err != nil && errors.Is(err, io.EOF) {
 			return nil
 		} else if err != nil {
-			return fmt.Errorf("get opus: %v", err)
+			return err
 		}
 
-		select {
-		case evnt := <-vh.events:
-			skip := vh.handleEvent(evnt)
-			if skip {
-				return nil
-			}
-		case vh.c.OpusSend <- o:
-		}
+		vh.conn.OpusSend <- frame
 	}
 }
 
-func (vh *voiceHandler) handleEvent(evnt *voiceEvent) bool {
-	switch evnt.typ {
-	case eventStop:
-		vh.stop = true
-		go func() {
-			evnt.ret <- true
-		}()
-		return true
-	case eventSkip:
-		go func() {
-			evnt.ret <- true
-		}()
-		return true
-	case eventPause:
-		go func() {
-			evnt.ret <- true
-		}()
-		skip := vh.paused()
-		if skip {
-			return true
-		}
-	case eventResume:
-		go func() {
-			evnt.ret <- true
-		}()
-	case eventLoop:
-		vh.loop = !vh.loop
-		go func() {
-			evnt.ret <- vh.loop
-		}()
-	case eventRepeat:
-		vh.repeat = !vh.repeat
-		go func() {
-			evnt.ret <- vh.repeat
-		}()
+func (vh *VoiceHandler) Close() error {
+	if err := vh.conn.Speaking(false); err != nil {
+		return err
 	}
-	return false
-}
-
-func (vh *voiceHandler) paused() bool {
-	for evnt := range vh.events {
-		switch evnt.typ {
-		case eventStop:
-			vh.stop = true
-			go func() {
-				evnt.ret <- true
-			}()
-			return true
-		case eventSkip:
-			go func() {
-				evnt.ret <- true
-			}()
-			return true
-		case eventPause:
-			go func() {
-				evnt.ret <- true
-			}()
-		case eventResume:
-			go func() {
-				evnt.ret <- true
-			}()
-			return false
-		case eventLoop:
-			vh.loop = !vh.loop
-			go func() {
-				evnt.ret <- vh.loop
-			}()
-		case eventRepeat:
-			vh.repeat = !vh.repeat
-			go func() {
-				evnt.ret <- vh.repeat
-			}()
-		}
-	}
-	return false
-}
-
-func (vh *voiceHandler) Pause() bool {
-	ret := make(chan bool)
-	select {
-	case vh.events <- &voiceEvent{
-		typ: eventPause,
-		ret: ret,
-	}:
-	case <-time.After(time.Second):
-	}
-	return <-ret
-}
-
-func (vh *voiceHandler) Resume() bool {
-	ret := make(chan bool)
-	select {
-	case vh.events <- &voiceEvent{
-		typ: eventResume,
-		ret: ret,
-	}:
-	case <-time.After(time.Second):
-	}
-	return <-ret
-}
-
-func (vh *voiceHandler) Skip() bool {
-	ret := make(chan bool)
-	select {
-	case vh.events <- &voiceEvent{
-		typ: eventSkip,
-		ret: ret,
-	}:
-	case <-time.After(time.Second):
-	}
-	return <-ret
-}
-
-func (vh *voiceHandler) Stop() bool {
-	ret := make(chan bool)
-	select {
-	case vh.events <- &voiceEvent{
-		typ: eventStop,
-		ret: ret,
-	}:
-	case <-time.After(time.Second):
-	}
-	return <-ret
-}
-
-func (vh *voiceHandler) Loop() bool {
-	ret := make(chan bool)
-	select {
-	case vh.events <- &voiceEvent{
-		typ: eventLoop,
-		ret: ret,
-	}:
-	case <-time.After(time.Second):
-	}
-	return <-ret
-}
-
-func (vh *voiceHandler) Repeat() bool {
-	ret := make(chan bool)
-	select {
-	case vh.events <- &voiceEvent{
-		typ: eventRepeat,
-		ret: ret,
-	}:
-	case <-time.After(time.Second):
-	}
-	return <-ret
+	vh.conn.Close()
+	return nil
 }
